@@ -1,0 +1,70 @@
+syntax= "proto3";
+
+service Wallet {
+    rpc changeBalance (ChangeBalanceRequest) returns (Transaction) {}
+    rpc genTransactionId (GenTransactionIdRequest) returns (GenTransactionIdResponse) {}
+
+    rpc getAvailable (RequestGetWallet) returns (ResponseWalletSingleValue) {}
+    rpc getLocked (RequestGetWallet) returns (ResponseWalletSingleValue) {}
+    rpc getBalance (RequestGetWallet) returns (ResponseWalletSingleValue) {}
+    rpc getWallet (RequestGetWallet) returns (ResponseWallet) {}
+
+    rpc rollbackWallet (RequestRollback) returns (Empty) {}
+}
+
+message RequestRollback {
+    repeated Transaction transactions = 1;
+}
+
+message RequestGetWallet {
+    string userId = 1;
+    uint32 assetId = 2;
+    string walletType = 3;
+}
+message ResponseWalletSingleValue {
+    double result = 1;
+}
+message ResponseWallet {
+    double value = 1;
+    double locked_value = 2;
+    double type = 3;
+}
+
+message GenTransactionIdResponse {
+    string result = 1;
+}
+message GenTransactionIdRequest {
+    string prefix = 1;
+}
+
+message Transaction {
+    uint32 assetId = 3;
+    string category = 5;
+    uint64 createdAt = 6;
+    bool mainBalance = 7;
+    double moneyBefore = 8;
+    double moneyAfter = 9;
+    double moneyUse = 10;
+    string note = 11;
+    bool portfolioScanned = 12;
+    uint64 updatedAt = 13;
+    string userId = 14;
+    string walletType = 15;
+    string txhash = 16;
+    string transactionId = 17;
+    string metadata = 18;
+}
+
+message ChangeBalanceRequest {
+    string userId = 1;
+    uint32 assetId = 2;
+    double valueChange = 3;
+    double lockedValueChange = 4;
+    string category = 5;
+    string note = 6;
+    string options = 7;
+}
+
+message Empty {
+
+}

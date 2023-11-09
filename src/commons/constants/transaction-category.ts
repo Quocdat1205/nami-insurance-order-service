@@ -1,0 +1,133 @@
+export enum HistoryType {
+  CONVERT = 'convert',
+  DEPOSIT_WITHDRAW = 'depositwithdraw',
+  FIAT = 'fiat',
+  FUNDING = 'funding',
+  STAKING = 'staking',
+  TRANSFER = 'transfer',
+  FUTURES = 'futures',
+  EXCHANGE = 'exchange',
+  FUTURES_FEE = 'futures_fee',
+  EXCHANGE_FEE = 'exchange_fee',
+  CONVERT_SMALL_BALANCE = 'convertsmallbalance',
+  REWARD = 'reward',
+  FUTURES_COMMISSION = 'futurescommission',
+  PARTNER_COMMISSION = 'partnercommission',
+  INSURANCE = 'insurance',
+  OFF_CHAIN = 'off_chain',
+  LOAN = 'loan',
+  EARN = 'earn',
+}
+
+export const TRANSACTION_CATEGORY_GROUP = {
+  [HistoryType.CONVERT_SMALL_BALANCE]: {
+    CONVERT_TO_NAMI: 129,
+  },
+  [HistoryType.PARTNER_COMMISSION]: {
+    SHARE_PARTNER_COMMISSION_BUY: 808,
+    SHARE_PARTNER_COMMISSION_SELL: 809,
+  },
+  [HistoryType.REWARD]: {
+    REWARD_CENTER: 801,
+    COMMISSION: 2000,
+    FUTURES_COMMISSION: 2001,
+    SPOT_COMMISSION: 2002,
+    UNKNOWN_COMMISSION: 2003,
+    SHARE_PARTNER_COMMISSION_BUY: 808,
+    SHARE_PARTNER_COMMISSION_SELL: 809,
+    INSURANCE_COMMISSION: 2004,
+  },
+  [HistoryType.CONVERT]: {
+    EXCHANGE_SWAP: 134,
+    EXCHANGE_SWAP_FEE: 135,
+    EXCHANGE_SWAP_FIXED_FEE: 136,
+    CONVERT_TO_NAMI: 129,
+  },
+  [HistoryType.DEPOSIT_WITHDRAW]: {
+    DEPOSIT: 4,
+    WITHDRAW: 5,
+    VNDC_DIRECT_DEPOSIT: 722,
+    VNDC_DIRECT_WITHDRAW: 723,
+    VNDC_DIRECT_WITHDRAW_FEE: 724,
+  },
+  [HistoryType.FIAT]: {
+    PARTNER_TRANSACTION: 200,
+  },
+  [HistoryType.FUNDING]: {
+    FUTURE_FUNDING_FEE: 611,
+  },
+  [HistoryType.EXCHANGE]: {
+    EXCHANGE_LOCK_CURRENCY: 130,
+    EXCHANGE_MATCH_ORDER: 131,
+    EXCHANGE_CLOSE_ORDER: 132,
+    EXCHANGE_FEE: 133,
+  },
+  [HistoryType.FUTURES]: {
+    FUTURE_PLACE_ORDER_FEE: 600,
+    FUTURE_PLACE_ORDER_MARGIN: 601,
+    FUTURE_CLOSE_ORDER_PROFIT: 602,
+    FUTURE_SWAP: 603,
+    FUTURE_REFERRAL_COMMISSION: 604,
+    FUTURE_VNDC_FEE_PROMOTE: 605,
+    FUTURE_REFERRAL_COMMISSION_LV2: 606,
+    FUTURE_REFERRAL_COMMISSION_LV3: 607,
+    FUTURE_INSURANCE_FUND: 608,
+    FUTURE_PROMOTION: 609,
+    FUTURE_FUNDING_FEE: 611,
+  },
+  [HistoryType.STAKING]: {
+    STAKE_DAILY_INTEREST: 570,
+    STAKE_DAILY_INTEREST_COMMISSION: 571,
+  },
+  [HistoryType.TRANSFER]: {
+    TRANSFER_WALLET_TOKEN: 44,
+    TRANSFER_WALLET: 48,
+    // RECEIVED_OFF_CHAIN: 50,
+    // TRANSFER_OFF_CHAIN: 51
+  },
+  [HistoryType.FUTURES_FEE]: {
+    FUTURE_VNDC_FEE_PROMOTE: 605,
+    FUTURE_PLACE_ORDER_FEE: 600,
+    FUTURE_FUNDING_FEE: 611,
+  },
+  [HistoryType.EXCHANGE_FEE]: {
+    EXCHANGE_FEE: 133,
+  },
+  [HistoryType.FUTURES_COMMISSION]: {
+    COMMISSION: 2000,
+    FUTURES_COMMISSION: 2001,
+    SPOT_COMMISSION: 2002,
+    UNKNOWN_COMMISSION: 2003,
+    INSURANCE_COMMISSION: 2004,
+  },
+  [HistoryType.INSURANCE]: {
+    INSURANCE_BUY: 8000,
+    INSURANCE_CLAIMED: 8001,
+    INSURANCE_CANCELED: 8002,
+    INSURANCE_REFUNDED: 8003,
+    INSURANCE_LIQUIDATED: 8004,
+    INSURANCE_COMMISSION: 2004,
+  },
+  [HistoryType.OFF_CHAIN]: {
+    RECEIVED_OFF_CHAIN: 50,
+    TRANSFER_OFF_CHAIN: 51,
+  },
+  [HistoryType.LOAN]: {
+    LOCK_COLLATERAL_ASSET: 1001, // khoa thue chap
+    UNLOCK_COLLATERAL_ASSET: 1002, // mo khoa thue chap
+    RECEIVE_LOAN_ASSET: 1003, // nhan tien vay
+    PAYBACK_LOAN: 1004, // tra no
+    LIQUIDATE_AVAILABLE: 1005, // thanh ly so du trong vi
+    LIQUIDATE_COLLATERAL: 1006, // thanh ly thue chap
+    LIQUIDATE_FEE: 1007, // phi liquidate
+    MODIFY_MARGIN: 1008, // thay doi margin
+    RETURN_MARGIN: 1009, // hoan tra khi repay bang collateral
+  },
+  [HistoryType.EARN]: {
+    SUBSCRIBE_FARMING_POOL: 1020, // Trừ tiền lúc đăng ký Farming pool
+    WITHDRAW_REWARDS_FARMING_POOL: 1021, // Cộng tiền lúc rút thưởng
+    REDEEM_FARMING_POOL: 1022, // Cộng tiền asset gốc lúc End pool
+    REDEEM_REWARD_FARMING_POOL: 1023, // Cộng tiền rewardAsset thưởng lúc End pool
+    REDEEM_EARLY_FARMING_POOL: 1024, // Cộng tiền asset gốc lúc Kết thúc pool sớm
+  },
+};
