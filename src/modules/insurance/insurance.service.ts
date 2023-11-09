@@ -42,7 +42,11 @@ import {
   HistoryType,
   TRANSACTION_CATEGORY_GROUP,
 } from '@commons/constants/transaction-category';
-import { WALLET_TYPES } from '@commons/constants';
+import {
+  MINUTES_TO_MILLISECONDS,
+  SECONDS_TO_MILLISECONDS,
+  WALLET_TYPES,
+} from '@commons/constants';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
@@ -207,25 +211,25 @@ export class InsuranceService {
       _id,
       owner: userId,
       nami_id: namiCode,
-      q_covered: q_covered,
-      asset_covered: asset_covered,
+      q_covered,
+      asset_covered,
       asset_refund: asset_refund ?? DEFAULT_TOKEN_UNIT,
-      day_change_token: day_change_token,
-      margin: margin,
-      p_claim: p_claim,
+      day_change_token,
+      margin,
+      p_claim,
       p_market: p_open,
-      p_stop: p_stop,
-      period: period,
-      q_claim: q_claim,
+      p_stop,
+      period,
+      q_claim,
       type: INSURANCE_TYPE.MARKET,
       state: INSURANCE_STATE.AVAILABLE,
       unit: unit ?? DEFAULT_TOKEN_UNIT,
       quote_asset: quote_asset ?? DEFAULT_TOKEN_UNIT,
-      expired: expired,
+      expired,
       side: side_insurance,
-      futures_order_id: futures_order_id,
+      futures_order_id,
       binance: binanceOrder,
-      period_unit: period_unit,
+      period_unit,
       origin_quantity: binanceOrder.origin_quantity,
     });
 
@@ -350,12 +354,18 @@ export class InsuranceService {
       quantity,
       unit = 'USDT', // default usdt
     } = payload;
-    const config = await this.assetConfigModel
-      .findOne({
-        symbol: `${asset_covered}${unit}`,
-      })
-      .read('s')
-      .lean();
+
+    const config = await this.cacheService.getOneCached(
+      `assetconfig:${asset_covered}${unit}`,
+      async () =>
+        await this.assetConfigModel
+          .findOne({
+            symbol: `${asset_covered}${unit}`,
+          })
+          .read('s')
+          .lean(),
+      MINUTES_TO_MILLISECONDS.ONE,
+    );
 
     if (!config || config?.isMaintain) {
       return {
@@ -446,9 +456,16 @@ export class InsuranceService {
   }
 
   private async getConfigPeriod(asset_covered: string, unit = 'USDT') {
-    const config_period_token = await this.configPeriodModel.findOne({
-      token: `${asset_covered.toUpperCase().trim()}${unit}`,
-    });
+    const config_period_token = await this.cacheService.getOneCached(
+      `configperiod:${asset_covered}${unit}`,
+      async () =>
+        await this.configPeriodModel
+          .findOne({
+            token: `${asset_covered.toUpperCase().trim()}${unit}`,
+          })
+          .lean(),
+      MINUTES_TO_MILLISECONDS.ONE,
+    );
     const list_day_avg: number[] = [];
     for (let i = 0; i < 15; i++) {
       const cur_avg = config_period_token.list_ratio_change[i];
