@@ -465,7 +465,7 @@ export class InsuranceService {
     // return parseInt(hashId);
     const id = await this.cacheService.redisCache.incr(this.INSURANCE_ID);
     if (id) {
-      const existed = await this.insuranceModel.exists({ id });
+      const existed = await this.insuranceModel.exists({ _id: id });
       if (existed) {
         return this.getIdInsurance();
       }
