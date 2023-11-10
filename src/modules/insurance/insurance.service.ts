@@ -42,11 +42,7 @@ import {
   HistoryType,
   TRANSACTION_CATEGORY_GROUP,
 } from '@commons/constants/transaction-category';
-import {
-  MINUTES_TO_MILLISECONDS,
-  SECONDS_TO_MILLISECONDS,
-  WALLET_TYPES,
-} from '@commons/constants';
+import { MINUTES_TO_MILLISECONDS, WALLET_TYPES } from '@commons/constants';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';

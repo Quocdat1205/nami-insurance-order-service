@@ -29,7 +29,13 @@ export enum PERIOD_TYPE {
 
 export type InsuranceDocument = HydratedDocument<Insurance>;
 
-@Schema({ collection: 'insurance_offchain', timestamps: true, autoIndex: true })
+@Schema({
+  collection: 'insurance_offchain',
+  timestamps: {
+    currentTime: () => Date.now(),
+  },
+  autoIndex: true,
+})
 export class Insurance {
   @Prop({
     required: true,
