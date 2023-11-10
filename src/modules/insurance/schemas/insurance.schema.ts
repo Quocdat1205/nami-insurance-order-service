@@ -39,8 +39,9 @@ export type InsuranceDocument = HydratedDocument<Insurance>;
 export class Insurance {
   @Prop({
     required: true,
+    type: String,
   })
-  _id: number;
+  _id: string;
 
   @Prop({
     required: true,

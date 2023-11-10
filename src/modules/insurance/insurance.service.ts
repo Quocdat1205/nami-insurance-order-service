@@ -474,7 +474,7 @@ export class InsuranceService {
     return list_day_avg;
   }
 
-  private async getIdInsurance(): Promise<number> {
+  private async getIdInsurance(): Promise<string> {
     // return parseInt(hashId);
     const id = await this.cacheService.redisCache.incr(this.INSURANCE_ID);
     if (id) {
@@ -482,15 +482,15 @@ export class InsuranceService {
       if (existed) {
         return this.getIdInsurance();
       }
-      return id;
+      return String(id);
     }
     const startFrom = 100000;
     this.cacheService.redisCache.set(this.INSURANCE_ID, startFrom);
-    return startFrom;
+    return String(startFrom);
   }
 
   private async placeBinanceFuturesOrder(payload: {
-    insurance_id: number;
+    insurance_id: string;
     p_open: number;
     p_claim: number;
     quantity: number;
@@ -628,7 +628,7 @@ export class InsuranceService {
     payload: {
       symbol: string; // includes USDT
       quantity: number;
-      clientOrderId: number;
+      clientOrderId: string;
       side: POSITION_SIDE;
     },
     credentials: IBinanceCredential,
@@ -655,7 +655,7 @@ export class InsuranceService {
       side: POSITION_SIDE;
       symbol: string;
       quantity: number;
-      insuranceId: number;
+      insuranceId: string;
       p_stop: number;
       p_claim: number;
     },

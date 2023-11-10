@@ -39,7 +39,7 @@ export class InsuranceCache {
     return data;
   }
 
-  async delActiveInsurances(_ids: number[]) {
+  async delActiveInsurances(_ids: string[]) {
     return this.cacheService.redisCache.hdel(
       this.ACTIVE_INSURANCE_KEY,
       ..._ids.map((id) => String(id)),
