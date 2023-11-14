@@ -48,15 +48,26 @@ export class InsuranceQueue {
     name: INSURANCE_QUEUE_ACTION.HIT_SLTP,
     concurrency: CPU_THREADS,
   })
-  async handleHitSltp(
+  async hitSltp(
     payload: Job<{
       insurance: Insurance;
       currentTime: string | Date;
       type: keyof typeof INSURANCE_ACTION;
     }>,
   ) {
-    payload.data.currentTime = new Date(payload.data.currentTime);
-    const { insurance: _insurance, currentTime, type } = payload?.data;
+    this.insuranceService.lockInsurance(
+      payload.data.insurance._id,
+      async () => await this.handleHitSltp(payload.data),
+    );
+  }
+
+  async handleHitSltp(payload: {
+    insurance: Insurance;
+    currentTime: string | Date;
+    type: keyof typeof INSURANCE_ACTION;
+  }) {
+    payload.currentTime = new Date(payload.currentTime);
+    const { insurance: _insurance, currentTime, type } = payload;
 
     const insurance = new this.insuranceModel(_insurance);
     insurance.isNew = false;

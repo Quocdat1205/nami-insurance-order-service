@@ -71,7 +71,7 @@ export class InsuranceService {
   public readonly binanceQueue: Queue;
 
   private readonly INSURANCE_ID = 'insurance:id';
-  private readonly INSURANCE_LOCK_SIGNATURE = (id: number) =>
+  private readonly INSURANCE_LOCK_SIGNATURE = (id: string) =>
     `lock:insurance:${id}`;
 
   constructor(
@@ -743,7 +743,7 @@ export class InsuranceService {
    * @returns A Promise that resolves to the result of the callback function.
    */
   async lockInsurance<T = void>(
-    _id: number,
+    _id: string,
     cb: () => Promise<T>,
     needThrow = false,
   ) {
