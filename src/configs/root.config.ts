@@ -13,6 +13,7 @@ import type { RedisClientOptions } from 'redis';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SECONDS_TO_MILLISECONDS } from '@commons/constants';
+import { ScheduleModule } from '@nestjs/schedule';
 
 const BaseModules = [
   ConfigModule.forRoot({
@@ -40,6 +41,7 @@ const BaseModules = [
       limit: config.NICE,
     },
   ]),
+  ScheduleModule.forRoot(),
 ];
 
 const DatabaseModules = [MongoDBModule, RedisModule, ESModule];

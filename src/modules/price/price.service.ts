@@ -17,7 +17,6 @@ import { Connection } from 'mongoose';
 import config from '@configs/configuration';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
 import { SECONDS_TO_MILLISECONDS } from '@commons/constants';
-import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable({
   scope: Scope.DEFAULT,
@@ -25,7 +24,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 export class PriceService {
   private readonly BINANCE_FUTURES_STREAMS_URL = 'wss://fstream.binance.com';
   private readonly PRICE_SPREAD_RATIO = config.PRICE_SPREAD_RATIO;
-
+  private readonly PRICE_DECIMAL = 8;
   /**
    * @Public
    * @description USDT/VNDC Market Rate (updated each 10 minutes)
@@ -105,7 +104,7 @@ export class PriceService {
         timeout: SECONDS_TO_MILLISECONDS.TEN,
       },
     );
-    binancePriceStream.on('open', () => {});
+    // binancePriceStream.on('open', () => {});
     binancePriceStream.on('error', () => {
       console.error(`${symbol} ticker stream error`);
     });
@@ -150,14 +149,20 @@ export class PriceService {
   ) {
     const symbol = data.symbol;
     const { lastPrice: currentPrice } = data;
-    const _lastPrice = currentPrice * rate.price;
+    const _lastPrice = Number(
+      Big(currentPrice).times(rate.price).times(this.PRICE_DECIMAL),
+    );
     const lastTickerPrice = this.bookTickers?.[symbol]?.lastPrice ?? 0;
     let matchOrderAction = 'buy';
     if (lastTickerPrice > 0) {
       matchOrderAction = currentPrice > lastTickerPrice ? 'buy' : 'sell';
     }
-    const closeBuy = Number(Big(currentPrice).times(rate.bid).toFixed(8));
-    const closeSell = Number(Big(currentPrice).times(rate.ask).toFixed(8));
+    const closeBuy = Number(
+      Big(currentPrice).times(rate.bid).toFixed(this.PRICE_DECIMAL),
+    );
+    const closeSell = Number(
+      Big(currentPrice).times(rate.ask).toFixed(this.PRICE_DECIMAL),
+    );
     const closePrice = matchOrderAction === 'buy' ? closeSell : closeBuy;
     const priceData: Ticker = {
       symbol,
@@ -287,9 +292,21 @@ export class PriceService {
     }
     return {
       symbol,
-      bestBid: Number(Big(basePrice.bestBid).div(quotePrice.bestBid)),
-      bestAsk: Number(Big(basePrice.bestAsk).div(quotePrice.bestAsk)),
-      lastPrice: Number(Big(basePrice.lastPrice).div(quotePrice.lastPrice)),
+      bestBid: Number(
+        Big(basePrice.bestBid)
+          .div(quotePrice.bestBid)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
+      bestAsk: Number(
+        Big(basePrice.bestAsk)
+          .div(quotePrice.bestAsk)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
+      lastPrice: Number(
+        Big(basePrice.lastPrice)
+          .div(quotePrice.lastPrice)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
     };
   }
 
@@ -321,20 +338,31 @@ export class PriceService {
     const quotePrice =
       pair.quote === _quote ? base : highLow[`${pair.quote}${_quote}`];
     if (!basePrice || !quotePrice) {
-      console.log('no price wtf');
+      console.log(symbol, 'no price wtf');
       return null;
     }
     return {
-      bidLow: Number(Big(basePrice.bidLow).div(quotePrice.bidLow)),
-      askLow: Number(Big(basePrice.askLow).div(quotePrice.askLow)),
-      bidHigh: Number(Big(basePrice.bidHigh).div(quotePrice.bidHigh)),
-      askHigh: Number(Big(basePrice.askHigh).div(quotePrice.askHigh)),
+      bidLow: Number(
+        Big(basePrice.bidLow)
+          .div(quotePrice.bidLow)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
+      askLow: Number(
+        Big(basePrice.askLow)
+          .div(quotePrice.askLow)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
+      bidHigh: Number(
+        Big(basePrice.bidHigh)
+          .div(quotePrice.bidHigh)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
+      askHigh: Number(
+        Big(basePrice.askHigh)
+          .div(quotePrice.askHigh)
+          .toFixed(this.PRICE_DECIMAL),
+      ),
       lastTick: basePrice.lastTick,
     };
-  }
-
-  @Cron(CronExpression.EVERY_5_SECONDS)
-  async test() {
-    console.log(this.bookTickers);
   }
 }

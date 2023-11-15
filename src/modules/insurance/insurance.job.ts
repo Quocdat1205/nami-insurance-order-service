@@ -46,7 +46,7 @@ export class InsuranceJob {
           priceData,
         );
         if (!prices) {
-          console.warn('NO PRICE FOUND: ', symbol, insurance._id);
+          console.warn('NO PRICE FOUND: ', symbol, insurance._id, new Date());
           return;
         }
         switch (insurance.side) {
