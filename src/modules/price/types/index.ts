@@ -57,10 +57,6 @@ export interface ISymbolTickerStreamPayload {
   x: string; // '0.0009'; // First trade(F)-1 price (first trade before the 24hr rolling window)
   c: string; // '0.0025'; // Last price
   Q: string; // '10'; // Last quantity
-  b: string; // '0.0024'; // Best bid price
-  B: string; // '10'; // Best bid quantity
-  a: string; // '0.0026'; // Best ask price
-  A: string; // '100'; // Best ask quantity
   o: string; // '0.0010'; // Open price
   h: string; //  '0.0025'; // High price
   l: string; //'0.0010'; // Low price
@@ -96,10 +92,6 @@ export class SymbolTicker {
     this.priceChangePercent = Number(payload.P); // Price change percent
     this.lastPrice = Number(payload.c); // Last price
     this.lastQuantity = Number(payload.Q); // Last quantity
-    this.bidPrice = Number(payload.b); // Best bid price
-    this.bidQuantity = Number(payload.Q); // Best bid quantity
-    this.askPrice = Number(payload.a); // Best ask price
-    this.askQuantity = Number(payload.A); // Best ask quantity
     this.openPrice = Number(payload.o); // Open price
     this.highPrice = Number(payload.h); // High price
     this.lowPrice = Number(payload.l); // Low price

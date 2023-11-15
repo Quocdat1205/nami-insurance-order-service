@@ -17,12 +17,13 @@ import { Connection } from 'mongoose';
 import config from '@configs/configuration';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
 import { SECONDS_TO_MILLISECONDS } from '@commons/constants';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable({
   scope: Scope.DEFAULT,
 })
 export class PriceService {
-  private readonly BINANCE_MARKET_STREAMS_URL = 'wss://stream.binance.com:9443';
+  private readonly BINANCE_FUTURES_STREAMS_URL = 'wss://fstream.binance.com';
   private readonly PRICE_SPREAD_RATIO = config.PRICE_SPREAD_RATIO;
 
   /**
@@ -63,8 +64,6 @@ export class PriceService {
     private readonly namiSlack: NamiSlack,
   ) {
     this.initSymbolTickersStream();
-    // this.updateUsdtVndcMarketPrice();
-    // this.updateNaoAndNamiMarketPrice();
   }
 
   /**
@@ -101,14 +100,12 @@ export class PriceService {
       return;
     }
     const binancePriceStream = new WebSocket(
-      `${this.BINANCE_MARKET_STREAMS_URL}/ws/${symbol?.toLowerCase()}@ticker`,
+      `${this.BINANCE_FUTURES_STREAMS_URL}/ws/${symbol?.toLowerCase()}@ticker`,
       {
         timeout: SECONDS_TO_MILLISECONDS.TEN,
       },
     );
-    binancePriceStream.on('open', () => {
-      console.log(`${symbol} ticker stream connected`);
-    });
+    binancePriceStream.on('open', () => {});
     binancePriceStream.on('error', () => {
       console.error(`${symbol} ticker stream error`);
     });
@@ -120,13 +117,13 @@ export class PriceService {
         SECONDS_TO_MILLISECONDS.ONE,
       );
     });
-    binancePriceStream.on('message', (payload: string) =>
+    binancePriceStream.on('message', (payload: Buffer) =>
       this.processPriceStream(payload),
     );
   }
 
-  private processPriceStream(_payload: string) {
-    const payload: ISymbolTickerStreamPayload = JSON.parse(_payload);
+  private processPriceStream(_payload: Buffer) {
+    const payload: ISymbolTickerStreamPayload = JSON.parse(String(_payload));
     try {
       if (payload?.s?.startsWith('DODOX')) {
         payload.s = payload?.s?.replace('DODOX', 'DODO');
@@ -137,22 +134,7 @@ export class PriceService {
         ask: 1 + this.PRICE_SPREAD_RATIO,
         price: 1,
       };
-      // const vndcConvertRate = {
-      //   bid: Number(Big(usdtConvertRate.bid).times(this.USDT_VNDC_RATE.bid)),
-      //   ask: Number(Big(usdtConvertRate.ask).times(this.USDT_VNDC_RATE.ask)),
-      //   price: Number(
-      //     Big(usdtConvertRate.price).times(this.USDT_VNDC_RATE.price),
-      //   ),
-      // };
       this.updateBookTicker(data, usdtConvertRate);
-      // this.updateBookTicker(
-      //   data.convertQuoteAsset(ASSETS[CURRENCIES.VNDC]),
-      //   vndcConvertRate,
-      // );
-      // this.updateBookTicker(
-      //   data.convertQuoteAsset(ASSETS[CURRENCIES.VNST]),
-      //   vndcConvertRate,
-      // );
     } catch (error) {
       console.error(error);
       this.namiSlack.sendSlackMessage(
@@ -187,11 +169,6 @@ export class PriceService {
     this.updateHighLowInterval(symbol, priceData);
   }
 
-  // private initHighLowFromBookTickers(symbol: string) {
-  //   if (!this.bookTickers[symbol]) return;
-  //   this.updateHighLowInterval(symbol, this.bookTickers[symbol]);
-  // }
-
   private updateHighLowInterval(symbol: string, price: Ticker) {
     Object.keys(this.highLowIntervalSubscribers).map((name) => {
       const { subscription, interval } = this.highLowIntervalSubscribers[name];
@@ -212,22 +189,6 @@ export class PriceService {
         this.highLowIntervalSubscribers[name].price = {
           [symbol]: symbolPrice,
         };
-        // [
-        //   'NAMIVNDC',
-        //   'NAMIVNST',
-        //   'NAMIUSDT',
-        //   'NAOVNDC',
-        //   'NAOVNST',
-        //   'NAOUSDT',
-        //   'VNDCVNST',
-        //   'VNDCUSDT',
-        //   'VNSTVNDC',
-        //   'VNSTUSDT',
-        //   'USDTVNDC',
-        //   'USDTVNST',
-        // ].map((e) => {
-        //   this.initHighLowFromBookTickers(e);
-        // });
       } else {
         if (!this.highLowIntervalSubscribers[name]?.price?.[symbol]) {
           this.highLowIntervalSubscribers[name].price[symbol] = symbolPrice;
@@ -251,135 +212,6 @@ export class PriceService {
       }
     });
   }
-
-  // moi 1 phut fetch lai gia market USDTVNDC
-  // @Cron(CronExpression.EVERY_MINUTE)
-  // protected async updateUsdtVndcMarketPrice() {
-  //   const USDTPrice = await this.getMarketPrice(
-  //     CURRENCIES.USDT,
-  //     CURRENCIES.VNDC,
-  //   );
-  //   // if (!USDTPrice?.p) return;
-  //   let { p } = USDTPrice;
-  //   if (!p) {
-  //     if (this.USDT_VNDC_RATE?.price) {
-  //       p = this.USDT_VNDC_RATE.price;
-  //     } else {
-  //       return;
-  //     }
-  //   }
-  //   this.USDT_VNDC_RATE.bid = p;
-  //   this.USDT_VNDC_RATE.ask = p;
-  //   this.USDT_VNDC_RATE.price = Number(p);
-  //   Bluebird.map(
-  //     [
-  //       {
-  //         symbol: 'VNDCVNST',
-  //         bestBid: 1,
-  //         bestAsk: 1,
-  //         lastPrice: 1,
-  //       },
-  //       {
-  //         symbol: 'VNSTVNDC',
-  //         bestBid: 1,
-  //         bestAsk: 1,
-  //         lastPrice: 1,
-  //       },
-  //       {
-  //         symbol: 'VNDCUSDT',
-  //         bestBid: Number(Big(1).div(p)),
-  //         bestAsk: Number(Big(1).div(p)),
-  //         lastPrice: Number(Big(1).div(p)),
-  //       },
-  //       {
-  //         symbol: 'VNSTUSDT',
-  //         bestBid: Number(Big(1).div(p)),
-  //         bestAsk: Number(Big(1).div(p)),
-  //         lastPrice: Number(Big(1).div(p)),
-  //       },
-  //       {
-  //         symbol: 'USDTVNDC',
-  //         bestBid: p,
-  //         bestAsk: p,
-  //         lastPrice: p,
-  //       },
-  //       {
-  //         symbol: 'USDTVNST',
-  //         bestBid: p,
-  //         bestAsk: p,
-  //         lastPrice: p,
-  //       },
-  //     ],
-  //     (e) => {
-  //       this.bookTickers[e.symbol] = e;
-  //       this.updateHighLowInterval(e.symbol, e);
-  //     },
-  //     { concurrency: 6 },
-  //   );
-  // }
-
-  // moi 3 giay update gia cua NAO NAMI ve book tickers
-  // @Cron('*/3 * * * * *')
-  // protected async updateNaoAndNamiMarketPrice() {
-  //   if (isNaN(this.USDT_VNDC_RATE.price)) return;
-  //   const [NAOVNDCPrice, NAMIVNDCPrice, NAOVNSTPrice, NAMIVNSTPrice] =
-  //     await Promise.all([
-  //       this.getMarketPrice(CURRENCIES.NAO, CURRENCIES.VNDC),
-  //       this.getMarketPrice(CURRENCIES.NAMI, CURRENCIES.VNDC),
-  //       this.getMarketPrice(CURRENCIES.NAO, CURRENCIES.VNST),
-  //       this.getMarketPrice(CURRENCIES.NAMI, CURRENCIES.VNST),
-  //     ]);
-  //   const naoPrice = Number(NAOVNDCPrice?.p || 1400);
-  //   const naoVnstPrice = Number(NAOVNSTPrice?.p || naoPrice);
-  //   [
-  //     {
-  //       symbol: 'NAOVNDC',
-  //       bestBid: naoPrice,
-  //       bestAsk: naoPrice,
-  //       lastPrice: naoPrice,
-  //     },
-  //     {
-  //       symbol: 'NAOVNST',
-  //       bestBid: naoVnstPrice,
-  //       bestAsk: naoVnstPrice,
-  //       lastPrice: naoVnstPrice,
-  //     },
-  //     {
-  //       symbol: 'NAOUSDT',
-  //       bestBid: Number(Big(naoPrice).div(this.USDT_VNDC_RATE.bid)),
-  //       bestAsk: Number(Big(naoPrice).div(this.USDT_VNDC_RATE.ask)),
-  //       lastPrice: Number(Big(naoPrice).div(this.USDT_VNDC_RATE.price)),
-  //     },
-  //   ].map((e) => {
-  //     this.bookTickers[e.symbol] = e;
-  //     this.updateHighLowInterval(e.symbol, e);
-  //   });
-  //   const namiPrice = Number(NAMIVNDCPrice?.p || 360);
-  //   const namiVnstPrice = Number(NAMIVNSTPrice?.p || namiPrice);
-  //   [
-  //     {
-  //       symbol: 'NAMIVNDC',
-  //       bestBid: namiPrice,
-  //       bestAsk: namiPrice,
-  //       lastPrice: namiPrice,
-  //     },
-  //     {
-  //       symbol: 'NAMIVNST',
-  //       bestBid: namiVnstPrice,
-  //       bestAsk: namiVnstPrice,
-  //       lastPrice: namiVnstPrice,
-  //     },
-  //     {
-  //       symbol: 'NAMIUSDT',
-  //       bestBid: Number(Big(namiPrice).div(this.USDT_VNDC_RATE.bid)),
-  //       bestAsk: Number(Big(namiPrice).div(this.USDT_VNDC_RATE.ask)),
-  //       lastPrice: Number(Big(namiPrice).div(this.USDT_VNDC_RATE.price)),
-  //     },
-  //   ].map((e) => {
-  //     this.bookTickers[e.symbol] = e;
-  //     this.updateHighLowInterval(e.symbol, e);
-  //   });
-  // }
 
   /**
    * @Public
@@ -499,5 +331,10 @@ export class PriceService {
       askHigh: Number(Big(basePrice.askHigh).div(quotePrice.askHigh)),
       lastTick: basePrice.lastTick,
     };
+  }
+
+  @Cron(CronExpression.EVERY_5_SECONDS)
+  async test() {
+    console.log(this.bookTickers);
   }
 }
