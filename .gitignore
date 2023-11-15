@@ -2,6 +2,9 @@
 /dist
 /node_modules
 
+binance.config.json
+/binance.config.json
+
 # Logs
 logs
 *.log
@@ -35,5 +38,3 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 .env
-
-binance.config.json
