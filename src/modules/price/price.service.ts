@@ -1,13 +1,12 @@
 import { ReadPreference } from 'mongodb';
 import { ASSETS, CURRENCIES } from '@commons/constants/currencies';
-import { BadRequestException, Inject, Injectable, Scope } from '@nestjs/common';
+import { BadRequestException, Injectable, Scope } from '@nestjs/common';
 import Big from 'big.js';
 import {
   BookTicker,
   HighLowIntervalPrice,
   HighLowIntervalSubscribers,
   ISymbolTickerStreamPayload,
-  MarketPrice,
   SymbolTicker,
   Ticker,
 } from '@modules/price/types';
@@ -15,18 +14,15 @@ import { WebSocket } from 'ws';
 import { Exception } from '@commons/constants/exception';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import Redis from 'ioredis';
 import config from '@configs/configuration';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
 import { SECONDS_TO_MILLISECONDS } from '@commons/constants';
-import { REDIS_PROVIDER } from '@databases/redis/redis.providers';
 
 @Injectable({
   scope: Scope.DEFAULT,
 })
 export class PriceService {
   private readonly BINANCE_MARKET_STREAMS_URL = 'wss://stream.binance.com:9443';
-  private readonly redisPrice: Redis;
   private readonly PRICE_SPREAD_RATIO = config.PRICE_SPREAD_RATIO;
 
   /**
@@ -64,10 +60,8 @@ export class PriceService {
 
   constructor(
     @InjectConnection() private readonly connection: Connection,
-    @Inject(REDIS_PROVIDER.PRICE) private readonly redis: Redis,
     private readonly namiSlack: NamiSlack,
   ) {
-    this.redisPrice = this.redis ?? new Redis(config.REDIS.PRICE.URI);
     this.initSymbolTickersStream();
     // this.updateUsdtVndcMarketPrice();
     // this.updateNaoAndNamiMarketPrice();
@@ -101,7 +95,7 @@ export class PriceService {
 
   private startSymbolTickerStream(symbol: string, retry = 0) {
     symbol = symbol.toUpperCase();
-    if (retry > 3) {
+    if (retry > config.NICE) {
       console.error(`Failed to stream ${symbol} ticker`);
       this.namiSlack.sendSlackMessage(`Failed to stream ${symbol} ticker`);
       return;
@@ -109,7 +103,7 @@ export class PriceService {
     const binancePriceStream = new WebSocket(
       `${this.BINANCE_MARKET_STREAMS_URL}/ws/${symbol?.toLowerCase()}@ticker`,
       {
-        timeout: 5000,
+        timeout: SECONDS_TO_MILLISECONDS.TEN,
       },
     );
     binancePriceStream.on('open', () => {
@@ -386,31 +380,6 @@ export class PriceService {
   //     this.updateHighLowInterval(e.symbol, e);
   //   });
   // }
-
-  /**
-   * @Public
-   * @description get market price of symbol
-   *
-   * @param base	base asset (eg: NAMI)
-   * @param quote	quote asset (eg: VNDC)
-   *
-   * @example
-   * this.priceService.getMarketPrice(
-   *   'NAMI',
-   *   'VNDC',
-   * );
-   */
-  public async getMarketPrice(base: number, quote: number) {
-    const REDIS_EXCHANGE_PRICE_KEY = 'market_watch';
-    const hash = `${REDIS_EXCHANGE_PRICE_KEY}:${quote}`;
-    const key = String(base);
-    const price = await this.redisPrice.hget(hash, key);
-    if (price) {
-      const parsed = JSON.parse(price);
-      return new MarketPrice(parsed);
-    }
-    return { p: null };
-  }
 
   /**
    * @Public
