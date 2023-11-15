@@ -15,6 +15,7 @@ import {
   MIN_Q_COVER,
   PRICE_CLAIM_DIFFERENT_RATIO,
   Q_CLAIM_CONFIG,
+  RISK_CONFIG,
 } from '@modules/insurance/constants';
 import { EXCEPTION } from '@commons/constants/exception';
 import { BadRequestException } from '@nestjs/common';
@@ -243,12 +244,14 @@ export const calculateSystemRisk = (props: {
 };
 
 export const calculateSystemCapital = ({ margin, system_risk }) => {
-  if (system_risk > 1) {
-    return Number(Big(margin).div(system_risk).toFixed(DEFAULT_DECIMAL));
+  if (system_risk > RISK_CONFIG) {
+    return Number(
+      Big(margin).times(RISK_CONFIG).div(system_risk).toFixed(DEFAULT_DECIMAL),
+    );
   } else {
     return Number(
       Big(margin)
-        .plus(Big(1).minus(system_risk).times(margin))
+        .plus(Big(RISK_CONFIG).minus(system_risk).times(margin))
         .toFixed(DEFAULT_DECIMAL),
     );
   }

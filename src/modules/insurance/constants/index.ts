@@ -9,6 +9,7 @@ export const INSURANCE_ACTION = {
   TP: 'tp',
 };
 
+//Insurance Config
 export const CLAIM_MIN_RATIO = 0.02;
 export const FILTER_TYPE = 6;
 export const DEFAULT_TOKEN_UNIT = 'USDT';
@@ -20,6 +21,7 @@ export const MIN_Q_COVER = 5;
 export const MAX_Q_COVER = 10000;
 export const DEFAULT_DECIMAL = 8;
 export const FUTURES_STOP_DIFF = -0.03;
+export const RISK_CONFIG = 0.95;
 export const CHANGE_AVG = 0.0699;
 export const BINANCE_ORDER_MARGIN = 300;
 
