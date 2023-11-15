@@ -11,7 +11,6 @@ import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
 import { Logger } from 'winston';
 import { Inject } from '@nestjs/common';
 import {
-  INSURANCE_SIDE,
   INSURANCE_STATE,
   Insurance,
 } from '@modules/insurance/schemas/insurance.schema';
@@ -81,17 +80,17 @@ export class InsuranceQueue {
       switch (type) {
         case INSURANCE_ACTION.TP: {
           if (insurance?.binance?.position?.origQty) {
-            (pnlBinance = Number(
+            pnlBinance = Number(
               Big(insurance?.binance?.position?.origQty)
                 .times(Big(insurance.p_market).minus(insurance.p_close).abs())
                 .toFixed(DEFAULT_DECIMAL),
-            )),
-              (pnlProject = Number(
-                Big(pnlBinance)
-                  .minus(insurance.q_claim)
-                  .plus(insurance.margin)
-                  .toFixed(DEFAULT_DECIMAL),
-              ));
+            );
+            pnlProject = Number(
+              Big(pnlBinance)
+                .minus(insurance.q_claim)
+                .plus(insurance.margin)
+                .toFixed(DEFAULT_DECIMAL),
+            );
           } else {
             // pnlProject = insurance.margin - insurance.q_claim;
             pnlProject = Number(

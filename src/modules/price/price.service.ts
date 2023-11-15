@@ -114,7 +114,7 @@ export class PriceService {
       console.error(`Retried to stream ${symbol}: ${retry}`);
       setTimeout(
         () => this.startSymbolTickerStream(symbol, retry + 1),
-        SECONDS_TO_MILLISECONDS.ONE,
+        SECONDS_TO_MILLISECONDS.FIVE,
       );
     });
     binancePriceStream.on('message', (payload: Buffer) =>

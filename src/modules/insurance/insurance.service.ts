@@ -583,24 +583,26 @@ export class InsuranceService {
         const tpError = !isSuccessResponse(tp);
         const positionError = !isSuccessResponse(position);
 
-        if (slError || positionError) {
-          await this.binanceService.cancelFuturesOrder(
-            {
-              symbol,
-              orderId: sl.orderId,
-            },
-            credential,
-          );
-          continue;
-        }
-        if (tpError || positionError) {
-          await this.binanceService.cancelFuturesOrder(
-            {
-              symbol,
-              orderId: tp.orderId,
-            },
-            credential,
-          );
+        if (slError || tpError || positionError) {
+          if (slError) {
+            await this.binanceService.cancelFuturesOrder(
+              {
+                symbol,
+                orderId: sl.orderId,
+              },
+              credential,
+            );
+          }
+          if (tpError) {
+            await this.binanceService.cancelFuturesOrder(
+              {
+                symbol,
+                orderId: tp.orderId,
+              },
+              credential,
+            );
+          }
+
           continue;
         }
 
