@@ -30,7 +30,7 @@ import { Model } from 'mongoose';
 import { LockService } from '@commons/modules/lock/lock.service';
 import { EXCEPTION, Exception } from '@commons/constants/exception';
 import { BuyInsuranceRequestDTO } from '@modules/insurance/dtos/buy-insurance-request.dto';
-import { TokenPayLoad } from '@commons/modules/auth/decorators/user.decorator';
+import { User } from '@commons/modules/auth/decorators/user.decorator';
 import { PriceService } from '@modules/price/price.service';
 import {
   BINANCE_ORDER_MARGIN,
@@ -117,7 +117,7 @@ export class InsuranceService {
     this.binanceQueue = this._binanceQueue;
   }
 
-  async buyInsurance(auth: TokenPayLoad, payload: BuyInsuranceRequestDTO) {
+  async buyInsurance(auth: User, payload: BuyInsuranceRequestDTO) {
     const { id: userId, code: namiCode } = auth;
     const {
       margin,
@@ -739,7 +739,7 @@ export class InsuranceService {
   /**
    * @deprecated use cancelInsurance in insurance-backend instead
    */
-  async cancelInsurance(auth: TokenPayLoad, _id: string) {
+  async cancelInsurance(auth: User, _id: string) {
     const { id: userId } = auth;
     const current = new Date();
     return this.lockInsurance(
