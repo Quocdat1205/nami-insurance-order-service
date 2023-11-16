@@ -77,6 +77,8 @@ export class InsuranceJob {
   ) {
     const currentPrice = prices.askHigh;
 
+    insurance.p_close = currentPrice;
+
     // hit TP
     if (Big(currentPrice).gte(insurance.p_claim)) {
       await this.insuranceCache.delActiveInsurances([insurance._id]);
@@ -110,6 +112,8 @@ export class InsuranceJob {
     currentTime: Date,
   ) {
     const currentPrice = prices.bidLow;
+
+    insurance.p_close = currentPrice;
 
     // hit TP
     if (Big(currentPrice).lte(insurance.p_claim)) {
