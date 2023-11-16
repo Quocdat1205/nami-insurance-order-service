@@ -275,17 +275,17 @@ export class InsuranceQueue {
         }
       }
 
-      await this.insuranceModel.updateOne({ _id: insurance._id }, insurance);
+      await insurance.save();
 
-      // TODO
-      // this.esService.createNewCommission(insurance);
-      // this.eventEmitter.emit(NAMI_EVENTS.UPDATE_INSURANCE_TO_NAMI, {
-      //   namiUserId: insurance.owner,
-      //   symbol: insurance.asset_covered,
-      //   futuresOrderId: insurance.futures_order_id,
-      // });
-      // this.helperRestService.pushNoticeChangeState(insurance);
-      // this.socketService.noticeChangeState(insurance);
+      this.insuranceService.createInsuranceCommission(insurance.toObject());
+
+      // emit event to user and exchange
+      this.insuranceService.emitUpdateInsuranceToUser(insurance.toObject());
+      this.insuranceService.emitUpdateInsuranceToNami({
+        symbol: insurance.asset_covered,
+        namiUserId: insurance.owner,
+        futuresOrderId: insurance.futures_order_id,
+      });
     } catch (error) {
       this.namiSlack.sendSlackMessage('HIT TP INSURANCE ERROR', {
         userId: insurance.owner,

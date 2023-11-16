@@ -24,6 +24,7 @@ export const FUTURES_STOP_DIFF = -0.03;
 export const RISK_CONFIG = 0.95;
 export const CHANGE_AVG = 0.0699;
 export const BINANCE_ORDER_MARGIN = 300;
+export const P_REFUND_RATIO = 0.005;
 
 export const NOTE_TITLES = {
   VI: {
@@ -138,3 +139,12 @@ export const HOUR_Q_CLAIM_CONFIG = [
 
 export const generateFuturesInsuranceKey = (userId, futuresOrderId) =>
   `insurance:${userId}:${futuresOrderId}`;
+
+export enum TRANSFER_HISTORY {
+  SYSTEM = 'System',
+  OFFCHAIN = 'offchain',
+  ONCHAIn = 'onchain',
+  MARGIN = 'Margin pool',
+  CLAIM = 'Claim pool',
+  FUND = 'Nami insurance fund',
+}

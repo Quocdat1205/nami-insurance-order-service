@@ -16,6 +16,10 @@ export class InsuranceCache {
     private readonly insuranceModel: Model<Insurance>,
   ) {}
 
+  async clearActiveInsurances() {
+    return this.cacheService.redisCache.del(this.ACTIVE_INSURANCE_KEY);
+  }
+
   async setOneActiveInsurance(order: LeanMongoModel<Insurance>) {
     return this.cacheService.redisCache.hset(this.ACTIVE_INSURANCE_KEY, {
       [String(order?._id)]: JSON.stringify(order),

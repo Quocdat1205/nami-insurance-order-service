@@ -1,3 +1,4 @@
+import { OnchainHistory } from '@modules/insurance/schemas/onchain-history.schema';
 import {
   BINANCE_QUEUE_ACTION,
   BINANCE_QUEUE_NAME,
@@ -5,7 +6,10 @@ import {
   ORDER_TYPE,
   POSITION_SIDE,
 } from '@modules/binance/constants';
-import { INSURANCE_QUEUE_NAME } from '@modules/insurance/constants';
+import {
+  INSURANCE_QUEUE_NAME,
+  TRANSFER_HISTORY,
+} from '@modules/insurance/constants';
 import { InsuranceCache } from '@modules/insurance/insurance.cache';
 import {
   BadRequestException,
@@ -19,11 +23,12 @@ import {
   INSURANCE_TYPE,
   PERIOD_TYPE,
   Insurance,
+  INSURANCE_SIDE,
 } from '@modules/insurance/schemas/insurance.schema';
 import { CacheService } from '@commons/modules/cache/cache.service';
 import { Model } from 'mongoose';
 import { LockService } from '@commons/modules/lock/lock.service';
-import { EXCEPTION } from '@commons/constants/exception';
+import { EXCEPTION, Exception } from '@commons/constants/exception';
 import { BuyInsuranceRequestDTO } from '@modules/insurance/dtos/buy-insurance-request.dto';
 import { TokenPayLoad } from '@commons/modules/auth/decorators/user.decorator';
 import { PriceService } from '@modules/price/price.service';
@@ -49,6 +54,7 @@ import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
 import {
   calculateFuturesBnbQuantity,
   calculateInsuranceStat,
+  calculatePRefund,
   symbolFilter,
   validateMargin,
 } from '@modules/insurance/utils';
@@ -64,6 +70,9 @@ import {
 } from '@modules/binance/binance.service';
 import { isSuccessResponse } from '@modules/binance/utils';
 import omit from 'lodash/omit';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
+import config from '@configs/configuration';
+import { SocketService } from '@modules/socket/socket.service';
 
 @Injectable()
 export class InsuranceService {
@@ -83,6 +92,8 @@ export class InsuranceService {
     private readonly configPeriodModel: Model<PeriodConfig>,
     @InjectModel(InsuranceLog.name)
     private readonly insuranceLogModel: Model<InsuranceLog>,
+    @InjectModel(OnchainHistory.name)
+    private readonly onchainHistoryModel: Model<OnchainHistory>,
 
     private readonly insuranceCache: InsuranceCache,
     private readonly cacheService: CacheService,
@@ -90,6 +101,8 @@ export class InsuranceService {
     private readonly priceService: PriceService,
     private readonly walletService: WalletService,
     private readonly binanceService: BinanceService,
+    private readonly esService: ElasticsearchService,
+    private readonly socketService: SocketService,
 
     @InjectQueue(INSURANCE_QUEUE_NAME)
     private readonly _insuranceQueue: Queue,
@@ -126,6 +139,13 @@ export class InsuranceService {
       base: asset_covered,
       quote: unit,
     })?.lastPrice;
+
+    console.log(
+      this.priceService.price(symbol, {
+        base: asset_covered,
+        quote: unit,
+      }),
+    );
 
     const { isValid } = validateMargin(p_open, payload);
     if (!isValid) {
@@ -246,12 +266,7 @@ export class InsuranceService {
           options: JSON.stringify({
             walletType: WALLET_TYPES.INSURANCE,
             metadata: {
-              source: {
-                collection: this.insuranceModel?.collection?.collectionName,
-                filter: {
-                  _id,
-                },
-              },
+              insurance: newInsurance,
             },
           }),
         }),
@@ -273,24 +288,21 @@ export class InsuranceService {
         ],
       });
 
-      // TODO
-      // await this.socketService.noticeChangeState({
-      //   ...new_insurance,
-      //   changed_time: Date.now(),
-      // });
-      // // add history landing page
-      // this.historyOnchain.create({
-      //   insurance_id: _id,
-      //   state: INSURANCE_STATE.AVAILABLE,
-      //   from: code,
-      //   to: ENUM_TRANSER_HISTORY.MARGIN,
-      //   asset_cover: asset_covered,
-      //   unit,
-      //   side: side_insurance,
-      //   amount: margin,
-      //   type: ENUM_TRANSER_HISTORY.OFFCHAIN,
-      // });
+      // add history landing page
+      this.onchainHistoryModel.create({
+        insurance_id: _id,
+        state: INSURANCE_STATE.AVAILABLE,
+        from: namiCode,
+        to: TRANSFER_HISTORY.MARGIN,
+        asset_cover: asset_covered,
+        unit,
+        side: side_insurance,
+        amount: margin,
+        type: TRANSFER_HISTORY.OFFCHAIN,
+      });
 
+      // emit event to user and exchange
+      this.emitUpdateInsuranceToUser(newInsurance.toObject());
       this.emitUpdateInsuranceToNami({
         symbol: asset_covered,
         namiUserId: userId,
@@ -298,7 +310,7 @@ export class InsuranceService {
       });
 
       return {
-        ...omit(newInsurance.toJSON(), ['binance']),
+        ...omit(newInsurance.toObject(), ['binance']),
         changed_time: Date.now(),
         isValid: true,
       };
@@ -620,12 +632,6 @@ export class InsuranceService {
     };
   }
 
-  async cancelBinanceFuturesOrder(insurance: Insurance) {
-    return this.binanceQueue.add(BINANCE_QUEUE_ACTION.CANCEL_FUTURES_ORDER, {
-      insurance,
-    });
-  }
-
   private async handlePlacePosition(
     payload: {
       symbol: string; // includes USDT
@@ -725,16 +731,184 @@ export class InsuranceService {
     return { sl: slPosition, tp: tpPosition };
   }
 
-  private async emitUpdateInsuranceToNami(payload: {
+  /**
+   * @deprecated use cancelInsurance in insurance-backend instead
+   */
+  async cancelInsurance(auth: TokenPayLoad, _id: string) {
+    const { id: userId } = auth;
+    const current = new Date();
+    return this.lockInsurance(
+      _id,
+      async () => {
+        const insurance = await this.insuranceModel.findOne({
+          _id,
+          owner: userId,
+        });
+
+        if (!insurance) {
+          throw new BadRequestException(Exception.NOT_FOUND('insurance')); // INSURANCE_NOT_FOUND
+        }
+
+        if (insurance.state !== INSURANCE_STATE.AVAILABLE) {
+          throw new BadRequestException(Exception.INVALID('insurance state')); // INVALID_INSURANCE_STATE
+        }
+
+        const currentPrice = await this.priceService.price(
+          `${insurance.asset_covered}${insurance.unit}`,
+          {
+            base: insurance.asset_covered,
+            quote: insurance.unit,
+          },
+        )?.lastPrice;
+
+        if (!currentPrice) {
+          throw new BadRequestException(
+            EXCEPTION.INSURANCE.INVALID_CANCEL_PRICE,
+          );
+        }
+
+        const p_refund = calculatePRefund(
+          insurance.p_market,
+          insurance.p_claim,
+        );
+
+        // check valid price range
+        switch (insurance.side) {
+          case INSURANCE_SIDE.BULL: {
+            if (
+              Big(currentPrice).gte(insurance.p_claim) ||
+              Big(currentPrice).lte(
+                Big(insurance.p_claim).plus(p_refund).div(2),
+              )
+            ) {
+              throw new BadRequestException(
+                EXCEPTION.INSURANCE.INVALID_CANCEL_PRICE,
+              );
+            }
+            break;
+          }
+          case INSURANCE_SIDE.BEAR: {
+            if (
+              Big(currentPrice).lte(insurance.p_claim) ||
+              Big(currentPrice).gte(
+                Big(insurance.p_claim).plus(p_refund).div(2),
+              )
+            ) {
+              throw new BadRequestException(
+                EXCEPTION.INSURANCE.INVALID_CANCEL_PRICE,
+              );
+            }
+            break;
+          }
+        }
+
+        const transactionHistories = [];
+        try {
+          // unlock margin
+          transactionHistories.push(
+            await this.walletService.changeBalance({
+              userId,
+              assetId: CURRENCIES[insurance.unit],
+              valueChange: null,
+              lockedValueChange: -insurance.margin,
+              category: String(
+                TRANSACTION_CATEGORY_GROUP[HistoryType.INSURANCE]
+                  .INSURANCE_CANCELED,
+              ),
+              note: `#${_id} ${NOTE_TITLES.EN.REASON.CANCELED} ${NOTE_TITLES.EN.ACTION.UNLOCK}`,
+              options: JSON.stringify({
+                walletType: WALLET_TYPES.INSURANCE,
+                metadata: {
+                  insurance,
+                },
+              }),
+            }),
+          );
+
+          await this.insuranceCache.delActiveInsurances([_id]);
+
+          // TODO cancel binance order
+
+          let pnl: number;
+          if (insurance?.binance?.position?.origin_quantity) {
+            pnl = Number(
+              Big(insurance?.binance?.position?.origin_quantity).times(
+                Big(currentPrice).minus(insurance.p_market).abs(),
+              ),
+            );
+          }
+          insurance.pnl_binance = pnl;
+          insurance.pnl_project = pnl;
+          insurance.p_close = currentPrice;
+          insurance.state = INSURANCE_STATE.CANCELED;
+          insurance.changed_time = current.getTime();
+
+          await insurance.save();
+
+          // TODO emit event
+          // await this.socketService.noticeChangeState({
+          //   ...insurance,
+          // });
+
+          // this.esService.createNewCommission(insurance);
+          // this.emitUpdateInsuranceEventToNami({
+          //   namiUserId: id,
+          //   symbol: insurance.asset_covered,
+          //   futuresOrderId: insurance?.futures_order_id,
+          // });
+
+          return omit(insurance.toObject(), ['binance']);
+        } catch (error) {
+          this.namiSlack.sendSlackMessage('CANCEL INSURANCE ERROR', {
+            userId,
+            insurance,
+            error,
+          });
+          this.logger.error('CANCEL INSURANCE ERROR', {
+            userId,
+            insurance,
+            error,
+          });
+          if (transactionHistories && transactionHistories?.length) {
+            this.namiSlack.sendSlackMessage('BUY INSURANCE ROLLBACK WALLET', {
+              userId,
+              insurance,
+              error,
+              transactionHistories,
+            });
+            this.logger.error('BUY INSURANCE ROLLBACK WALLET', {
+              userId,
+              insurance,
+              error: new Error(error),
+              transactionHistories,
+            });
+            this.walletService.rollback({
+              transactions: transactionHistories,
+            });
+          }
+          throw error;
+        }
+      },
+      true,
+    );
+  }
+
+  async cancelBinanceFuturesOrder(insurance: Insurance) {
+    return this.binanceQueue.add(BINANCE_QUEUE_ACTION.CANCEL_FUTURES_ORDER, {
+      insurance,
+    });
+  }
+
+  async emitUpdateInsuranceToUser(insurance: Partial<Insurance>) {
+    return this.socketService.emitUpdateInsuranceToUser(insurance);
+  }
+
+  async emitUpdateInsuranceToNami(payload: {
     namiUserId: string | number;
     symbol: string;
     futuresOrderId: string;
   }) {
-    const key = generateFuturesInsuranceKey(
-      payload.namiUserId,
-      payload.futuresOrderId,
-    );
-    await this.cacheService.redisCache.del(key);
+    return this.socketService.emitUpdateInsuranceToExchange(payload);
   }
 
   /**
@@ -756,9 +930,47 @@ export class InsuranceService {
       },
       needThrow
         ? () => {
-            throw new ConflictException(EXCEPTION.TOO_MANY_REQUEST);
+            throw new ConflictException(EXCEPTION.IS_PROCESSING);
           }
         : null,
     );
+  }
+
+  async createInsuranceCommission(insurance: Insurance) {
+    try {
+      const ES_INDEX_COMMISSION_OFFCHAIN = config.IS_PRODUCTION
+        ? `order-insurance-offchain-prod`
+        : `order-insurance-offchain-develop`;
+      return await this.esService.index({
+        index: ES_INDEX_COMMISSION_OFFCHAIN,
+        body: {
+          insurance_id: insurance._id,
+          q_covered: insurance.q_covered,
+          asset_covered: insurance.asset_covered,
+          margin: insurance.margin,
+          p_claim: insurance.p_claim,
+          p_market: insurance.p_market,
+          p_stop: insurance.p_stop,
+          period: insurance.period,
+          q_claim: insurance.q_claim,
+          quote_asset: CURRENCIES[insurance?.quote_asset],
+          expired: insurance.expired,
+          createdAt: insurance.createdAt,
+          userId: insurance.owner,
+          state: insurance.state,
+          push_time: Date.now(),
+          unit: CURRENCIES[insurance?.unit],
+        },
+      });
+    } catch (error) {
+      this.logger.error('CREATE INSURANCE COMMISSION ERROR', {
+        insurance,
+        error,
+      });
+      this.namiSlack.sendSlackMessage('CREATE INSURANCE COMMISSION ERROR', {
+        insurance,
+        error,
+      });
+    }
   }
 }

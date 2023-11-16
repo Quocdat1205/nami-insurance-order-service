@@ -12,7 +12,26 @@ const config = {
       ? 'https://nami.exchange'
       : 'https://test.nami.exchange',
 
+  INSURANCE_SECRET_KEY: process.env.INSURANCE_SECRET_KEY || '123456',
+
+  INSURANCE_OFFCHAIN_ENDPOINT:
+    process.env.NODE_ENV === 'production'
+      ? 'https://api-staging-offchain.namiinsurance.io'
+      : 'https://api-testnet.namiinsurance.io',
+
+  INSURANCE_ONCHAIN_ENDPOINT:
+    process.env.NODE_ENV === 'production'
+      ? 'https://api.namiinsurance.io'
+      : 'https://insurance-test.namifutures.com',
+
   NICE: 69,
+
+  CHANGE_STATE_SLACK: {
+    URL:
+      process.env.CHANGE_STATE_NOTI_URL ||
+      'https://test.nami.exchange/admin/insurance/slack/push_message_payment',
+    SECRET: process.env.CHANGE_STATE_NOTI_SECRET || '260369',
+  },
 
   PRICE_SPREAD_RATIO: Number(process.env.PRICE_SPREAD_RATIO) || 0.0002,
 

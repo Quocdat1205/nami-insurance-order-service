@@ -20,6 +20,11 @@ export const EXCEPTION = {
     message: 'Balance not enough',
   },
 
+  IS_PROCESSING: {
+    code: 'IS_PROCESSING',
+    message: 'Is processing',
+  },
+
   TOO_MANY_REQUEST: {
     code: 'TOO_MANY_REQUEST',
     message: 'Too many request',
@@ -65,6 +70,10 @@ export const EXCEPTION = {
     MAINTAINED: {
       code: 'MAINTAINED',
       message: 'Maintained',
+    },
+    INVALID_CANCEL_PRICE: {
+      code: 'INVALID_CANCLE_PRICE',
+      message: 'Invalid cancle price',
     },
   },
 

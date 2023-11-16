@@ -1,3 +1,7 @@
+import {
+  OnchainHistory,
+  OnchainHistorySchema,
+} from '@modules/insurance/schemas/onchain-history.schema';
 import { InsuranceController } from '@modules/insurance/insurance.controller';
 import { Module } from '@nestjs/common';
 import { InsuranceCache } from '@modules/insurance/insurance.cache';
@@ -26,6 +30,7 @@ import { BullModule } from '@nestjs/bull';
 import { INSURANCE_QUEUE_NAME } from '@modules/insurance/constants';
 import { BinanceModule } from '@modules/binance/binance.module';
 import { InsuranceJob } from '@modules/insurance/insurance.job';
+import { SocketModule } from '@modules/socket/socket.module';
 
 @Module({
   imports: [
@@ -37,10 +42,12 @@ import { InsuranceJob } from '@modules/insurance/insurance.job';
       { name: AssetConfig.name, schema: AssetConfigSchema },
       { name: InsuranceLog.name, schema: InsuranceLogSchema },
       { name: PeriodConfig.name, schema: PeriodConfigSchema },
+      { name: OnchainHistory.name, schema: OnchainHistorySchema },
     ]),
     BinanceModule,
     PriceModule,
     WalletModule,
+    SocketModule,
   ],
   controllers: [InsuranceController],
   providers: [InsuranceCache, InsuranceService, InsuranceQueue, InsuranceJob],

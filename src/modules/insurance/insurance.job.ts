@@ -7,6 +7,7 @@ import { HighLowIntervalPrice, HighLowPrice } from '@modules/price/types';
 import { CPU_THREADS, SECONDS_TO_MILLISECONDS } from '@commons/constants';
 import {
   INSURANCE_SIDE,
+  INSURANCE_STATE,
   Insurance,
 } from '@modules/insurance/schemas/insurance.schema';
 import Big from 'big.js';
@@ -14,13 +15,18 @@ import {
   INSURANCE_ACTION,
   INSURANCE_QUEUE_ACTION,
 } from '@modules/insurance/constants';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class InsuranceJob {
   constructor(
+    @InjectModel(Insurance.name)
+    private readonly insuranceModel: Model<Insurance>,
+
     private readonly insuranceService: InsuranceService,
     private readonly insuranceCache: InsuranceCache,
-
     private readonly priceService: PriceService,
   ) {
     this.priceService.subscribeHighLowInterval(
@@ -130,5 +136,27 @@ export class InsuranceJob {
         },
       );
     }
+  }
+
+  /**
+   * @note
+   * each insurance is inserted individually
+   * running sltp job can still be processed without fully sync needed
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async syncInsuranceToRedis() {
+    console.log('syncInsuranceToRedis', new Date());
+    const insurances = await this.insuranceModel
+      .find({
+        state: INSURANCE_STATE.AVAILABLE,
+      })
+      .read('primary')
+      .lean();
+    await this.insuranceCache.clearActiveInsurances();
+    return await Promise.all(
+      insurances.map(async (insurance) => {
+        return await this.insuranceCache.setOneActiveInsurance(insurance);
+      }),
+    );
   }
 }
