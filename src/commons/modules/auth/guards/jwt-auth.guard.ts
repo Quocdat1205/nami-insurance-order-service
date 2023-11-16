@@ -23,24 +23,29 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
     );
     if (allowUnauthorizedRequest) return allowUnauthorizedRequest;
-    const { accesstoken, fakeauthorization } = request.headers;
-    if (!accesstoken && fakeauthorization && !config.IS_PRODUCTION) {
+    const { authorization, fakeauthorization } = request.headers;
+    if (!authorization && fakeauthorization && !config.IS_PRODUCTION) {
       context.switchToHttp().getRequest().user = {
         id: Number(fakeauthorization),
         code: 'fake',
       };
       return true;
     }
+
+    console.log(config.JWT_SECRET);
+    console.log(authorization?.replace('Bearer', '').trim());
     try {
       const payload = verify(
-        accesstoken?.replace('Bearer', ''),
+        authorization?.replace('Bearer', '').trim(),
         config.JWT_SECRET,
       ) as {
-        user: TokenPayLoad;
+        payload: TokenPayLoad;
       };
-      if (!payload?.user?.id) throw new UnauthorizedException();
-      payload.user.id = Number(payload?.user?.id);
-      context.switchToHttp().getRequest().user = payload.user;
+      
+      if (!payload?.payload?.user?.id || !payload?.payload?.user?.code)
+        throw new UnauthorizedException();
+      payload.payload.user.id = Number(payload?.payload.user?.id);
+      context.switchToHttp().getRequest().user = payload.payload.user;
       return true;
     } catch (e) {
       throw new UnauthorizedException();

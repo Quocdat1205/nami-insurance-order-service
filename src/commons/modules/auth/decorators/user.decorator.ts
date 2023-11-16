@@ -1,12 +1,13 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
+export type User = { id: number; code: string };
+
 export type TokenPayLoad = {
-  id: number;
-  code: string;
+  user: User;
 };
 
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): TokenPayLoad => {
+  (_data: unknown, ctx: ExecutionContext): User => {
     const request = ctx.switchToHttp().getRequest();
     return request.user;
   },

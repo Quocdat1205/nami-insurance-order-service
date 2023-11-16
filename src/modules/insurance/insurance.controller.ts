@@ -3,7 +3,7 @@ import { InsuranceService } from '@modules/insurance/insurance.service';
 import { ROUTER } from '@configs/route.config';
 import {
   CurrentUser,
-  TokenPayLoad,
+  User,
 } from '@commons/modules/auth/decorators/user.decorator';
 import { BuyInsuranceRequestDTO } from '@modules/insurance/dtos/buy-insurance-request.dto';
 import { AuthGuard } from '@commons/modules/auth/guards/jwt-auth.guard';
@@ -15,7 +15,7 @@ export class InsuranceController {
   @Post()
   @UseGuards(AuthGuard)
   async buy(
-    @CurrentUser() user: TokenPayLoad,
+    @CurrentUser() user: User,
     @Body() payload: BuyInsuranceRequestDTO,
   ) {
     return this.insuranceService.buyInsurance(user, payload);
