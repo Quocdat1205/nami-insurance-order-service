@@ -33,7 +33,7 @@ export class AuthGuard implements CanActivate {
     }
     try {
       const payload = verify(
-        accesstoken?.replace('Bearer', ''),
+        accesstoken?.replace('Bearer', '').trim(),
         config.JWT_SECRET,
       ) as {
         user: TokenPayLoad;
