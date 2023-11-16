@@ -41,7 +41,7 @@ export class AuthGuard implements CanActivate {
       ) as {
         payload: TokenPayLoad;
       };
-      console.log('payload', payload);
+      
       if (!payload?.payload?.user?.id || !payload?.payload?.user?.code)
         throw new UnauthorizedException();
       payload.payload.user.id = Number(payload?.payload.user?.id);
