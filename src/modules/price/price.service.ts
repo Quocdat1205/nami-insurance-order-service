@@ -109,8 +109,11 @@ export class PriceService {
       console.error(`${symbol} ticker stream error`);
     });
     binancePriceStream.on('close', () => {
-      console.error(`${symbol} ticker stream close`);
-      console.error(`Retried to stream ${symbol}: ${retry}`);
+      console.error(
+        `${symbol} ticker stream close`,
+        `Retried to stream ${symbol}: ${retry}`,
+      );
+      this.bookTickers[symbol] = null;
       setTimeout(
         () => this.startSymbolTickerStream(symbol, retry + 1),
         SECONDS_TO_MILLISECONDS.FIVE,
@@ -150,7 +153,7 @@ export class PriceService {
     const symbol = data.symbol;
     const { lastPrice: currentPrice } = data;
     const _lastPrice = Number(
-      Big(currentPrice).times(rate.price).times(this.PRICE_DECIMAL),
+      Big(currentPrice).times(rate.price).toFixed(this.PRICE_DECIMAL),
     );
     const lastTickerPrice = this.bookTickers?.[symbol]?.lastPrice ?? 0;
     let matchOrderAction = 'buy';

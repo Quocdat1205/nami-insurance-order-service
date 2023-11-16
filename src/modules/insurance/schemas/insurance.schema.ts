@@ -195,10 +195,10 @@ export class Insurance {
     default: PERIOD_TYPE.DAY,
   })
   period_unit?: PERIOD_TYPE;
+
+  @Prop()
+  createdAt: number;
 }
 
 export const InsuranceSchema = SchemaFactory.createForClass(Insurance);
-InsuranceSchema.index(
-  { owner: 1, state: 1 },
-  { background: true, unique: true },
-);
+InsuranceSchema.index({ owner: 1, state: 1 }, { background: true });

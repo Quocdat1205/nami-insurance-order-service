@@ -1,5 +1,7 @@
 import {
   INSURANCE_SIDE,
+  INSURANCE_STATE,
+  Insurance,
   PERIOD_TYPE,
 } from '@modules/insurance/schemas/insurance.schema';
 import Big from 'big.js';
@@ -14,11 +16,14 @@ import {
   MIN_MARGIN,
   MIN_Q_COVER,
   PRICE_CLAIM_DIFFERENT_RATIO,
+  P_REFUND_RATIO,
   Q_CLAIM_CONFIG,
   RISK_CONFIG,
 } from '@modules/insurance/constants';
 import { EXCEPTION } from '@commons/constants/exception';
 import { BadRequestException } from '@nestjs/common';
+import axios from 'axios';
+import config from '@configs/configuration';
 
 export const validateMargin = (
   currentPrice: number,
@@ -49,15 +54,14 @@ export const validateMargin = (
         .minus(currentPrice)
         .abs()
         .div(p_open)
-        // .gt(PRICE_CLAIM_DIFFERENT_RATIO)
-        .gt(1)
+        .gt(PRICE_CLAIM_DIFFERENT_RATIO)
     ) {
       throw new BadRequestException(EXCEPTION.INSURANCE.INVALID_P_LIMIT);
     }
     // validate margin
     const ratio_margin_q_cover = Number(
       Big(margin).div(q_covered).toFixed(DEFAULT_DECIMAL),
-    ); // margin unit == q_cover unit = USDT
+    );
     if (
       ratio_margin_q_cover < MIN_HEDGE_RATIO ||
       ratio_margin_q_cover > MAX_HEDGE_RATIO
@@ -368,4 +372,115 @@ export const symbolFilter = (
       break;
   }
   return result;
+};
+
+export const calculatePRefund = (p_market: number, p_claim: number) => {
+  const isBull = Big(p_claim).gt(p_market);
+  return Number(
+    Big(p_market).times(isBull ? 1 + P_REFUND_RATIO : 1 - P_REFUND_RATIO),
+  );
+};
+
+const notiContent = {
+  [INSURANCE_STATE.REFUNDED]: {
+    title: 'Nami Exchange - Hoàn ký quỹ',
+    reason: 'Hết hạn hợp đồng, nằm trong khoảng p_refund',
+  },
+  [INSURANCE_STATE.CLAIMED]: {
+    title: 'Nami Exchange - Đã chi trả',
+    reason: 'Đã chạm giá p_claim',
+  },
+  [INSURANCE_STATE.INVALID]: {
+    title: 'Nami Exchange - Hợp đồng không hợp lệ',
+    reason: 'Giá vuợt khoảng cách an toàn',
+  },
+  [INSURANCE_STATE.LIQUIDATED]: {
+    title: 'Nami Exchange - Đã thanh lý',
+    reason: 'Chạm giá p_expire',
+  },
+  [INSURANCE_STATE.EXPIRED]: {
+    title: 'Nami Exchange - Đã thanh lý',
+    reason: 'Hết hạn',
+  },
+  [INSURANCE_STATE.CANCELED]: {
+    title: 'Nami Exchange - Hoàn ký quỹ',
+    reason: 'Dừng hợp đồng trước hạn',
+  },
+} as const;
+
+export enum ReasonNotice {}
+
+export const insuranceSlackNoti = async (insurance: Insurance) => {
+  const {
+    _id,
+    margin,
+    pnl_binance,
+    pnl_project,
+    p_stop,
+    p_market,
+    q_claim,
+    day_change_token,
+  } = insurance;
+
+  const userCap = margin;
+  let pnlUser = 0;
+  let value = 0;
+  const hash = '-';
+
+  const system_risk = calculateSystemRisk({
+    p_stop,
+    p_open: p_market,
+    day_change_token,
+  });
+
+  const systemCap = calculateSystemCapital({
+    margin,
+    system_risk,
+  });
+
+  const content = notiContent[insurance.state];
+  switch (insurance.state) {
+    case INSURANCE_STATE.CLAIMED: {
+      pnlUser = q_claim - margin;
+      value = q_claim;
+      break;
+    }
+    case INSURANCE_STATE.REFUNDED: {
+      pnlUser = 0;
+      value = margin;
+      break;
+    }
+    case INSURANCE_STATE.LIQUIDATED: {
+      pnlUser = -margin;
+      value = margin;
+      break;
+    }
+    case INSURANCE_STATE.CANCELED: {
+      pnlUser = -margin;
+      value = margin;
+      break;
+    }
+  }
+
+  if (insurance && insurance._id && userCap) {
+    const { data } = await axios.post(config.CHANGE_STATE_SLACK.URL, {
+      insuranceId: `${_id}` || '-',
+      title: content.title,
+      value: value.toFixed(2),
+      reason: content.reason,
+      privateKey: config.CHANGE_STATE_SLACK.SECRET,
+      owner: insurance?.nami_id || insurance.owner,
+      hash,
+      userCap,
+      systemCap,
+      pnlUser,
+      pnlBinance: pnl_binance,
+      pnlProject: pnl_project,
+      asset: insurance.asset_covered + '-' + insurance.side,
+    });
+
+    return data;
+  } else {
+    console.error('changeStateSlackNoti ERROR', insurance);
+  }
 };
