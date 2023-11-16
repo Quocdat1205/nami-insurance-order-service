@@ -39,7 +39,6 @@ import {
   DEFAULT_TOKEN_UNIT,
   FILTER_TYPE,
   NOTE_TITLES,
-  generateFuturesInsuranceKey,
 } from '@modules/insurance/constants';
 import { WalletService } from '@modules/wallet/wallet.service';
 import { CURRENCIES } from '@commons/constants/currencies';
@@ -70,14 +69,11 @@ import {
 } from '@modules/binance/binance.service';
 import { isSuccessResponse } from '@modules/binance/utils';
 import omit from 'lodash/omit';
-<<<<<<< HEAD
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import config from '@configs/configuration';
 import { SocketService } from '@modules/socket/socket.service';
-=======
 import { FuturesPlaceOrderRequestDTO } from '@modules/binance/dtos/futures.dto';
 import { sleep } from '@commons/utils';
->>>>>>> origin/master
 
 @Injectable()
 export class InsuranceService {
