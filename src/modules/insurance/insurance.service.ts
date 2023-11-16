@@ -64,6 +64,8 @@ import {
 } from '@modules/binance/binance.service';
 import { isSuccessResponse } from '@modules/binance/utils';
 import omit from 'lodash/omit';
+import { FuturesPlaceOrderRequestDTO } from '@modules/binance/dtos/futures.dto';
+import { sleep } from '@commons/utils';
 
 @Injectable()
 export class InsuranceService {
@@ -553,6 +555,31 @@ export class InsuranceService {
       for (let i = 0; i < binanceAccounts?.length; i++) {
         const credential = binanceAccounts[i];
         binanceId = credential.id;
+
+        position = await this.handlePlacePosition(
+          {
+            clientOrderId: insurance_id,
+            symbol,
+            quantity,
+            side,
+          },
+          credential,
+        );
+        const positionError = !isSuccessResponse(position);
+
+        if (positionError) {
+          console.log('OPEN POSITION', position, positionError);
+          if (i === binanceAccounts?.length - 1) {
+            notifyError(
+              binanceId,
+              position?.msg ? position.msg : 'Open order error',
+            );
+          }
+
+          // Nếu lệnh position lỗi thì ko đặt lệnh TP SL
+          continue;
+        }
+
         const { sl, tp } = await this.handlePlaceOrder(
           {
             side,
@@ -567,44 +594,6 @@ export class InsuranceService {
 
         takeProfit = tp;
         stopLoss = sl;
-
-        position = await this.handlePlacePosition(
-          {
-            clientOrderId: insurance_id,
-            symbol,
-            quantity,
-            side,
-          },
-          credential,
-        );
-
-        // check error order
-        const slError = !isSuccessResponse(sl);
-        const tpError = !isSuccessResponse(tp);
-        const positionError = !isSuccessResponse(position);
-
-        if (slError || tpError || positionError) {
-          if (slError) {
-            await this.binanceService.cancelFuturesOrder(
-              {
-                symbol,
-                orderId: sl.orderId,
-              },
-              credential,
-            );
-          }
-          if (tpError) {
-            await this.binanceService.cancelFuturesOrder(
-              {
-                symbol,
-                orderId: tp.orderId,
-              },
-              credential,
-            );
-          }
-
-          continue;
-        }
 
         break;
       }
@@ -664,62 +653,79 @@ export class InsuranceService {
     binanceAccount: IBinanceCredential,
   ) {
     const { side, symbol, quantity, insuranceId, p_stop, p_claim } = payload;
-    let slPosition: any;
-    let tpPosition: any;
+
+    let slData: FuturesPlaceOrderRequestDTO;
+    let tpData: FuturesPlaceOrderRequestDTO;
+
     if (side === POSITION_SIDE.SHORT) {
-      slPosition = await this.binanceService.placeFuturesOrder(
-        {
-          symbol,
-          quantity,
-          side: ORDER_SIDE.BUY,
-          newClientOrderId: insuranceId + '_SL',
-          stopPrice: p_stop,
-          type: ORDER_TYPE.STOP_MARKET,
-          priceProtect: true,
-          positionSide: side,
-        },
-        binanceAccount,
-      );
-      tpPosition = await this.binanceService.placeFuturesOrder(
-        {
-          symbol,
-          quantity,
-          side: ORDER_SIDE.BUY,
-          newClientOrderId: insuranceId + '_TP',
-          stopPrice: p_claim,
-          type: ORDER_TYPE.TAKE_PROFIT_MARKET,
-          priceProtect: true,
-          positionSide: side,
-        },
-        binanceAccount,
-      );
+      slData = {
+        symbol,
+        quantity,
+        side: ORDER_SIDE.BUY,
+        newClientOrderId: insuranceId + '_SL',
+        stopPrice: p_stop,
+        type: ORDER_TYPE.STOP_MARKET,
+        priceProtect: true,
+        positionSide: side,
+      };
+
+      tpData = {
+        symbol,
+        quantity,
+        side: ORDER_SIDE.BUY,
+        newClientOrderId: insuranceId + '_TP',
+        stopPrice: p_claim,
+        type: ORDER_TYPE.TAKE_PROFIT_MARKET,
+        priceProtect: true,
+        positionSide: side,
+      };
     } else {
-      slPosition = await this.binanceService.placeFuturesOrder(
-        {
-          symbol,
-          quantity,
-          side: ORDER_SIDE.SELL,
-          newClientOrderId: insuranceId + '_SL',
-          stopPrice: p_stop,
-          type: ORDER_TYPE.STOP_MARKET,
-          priceProtect: true,
-          positionSide: side,
-        },
-        binanceAccount,
-      );
-      tpPosition = await this.binanceService.placeFuturesOrder(
-        {
-          symbol,
-          quantity,
-          side: ORDER_SIDE.SELL,
-          newClientOrderId: insuranceId + '_TP',
-          stopPrice: p_claim,
-          type: ORDER_TYPE.TAKE_PROFIT_MARKET,
-          priceProtect: true,
-          positionSide: side,
-        },
-        binanceAccount,
-      );
+      slData = {
+        symbol,
+        quantity,
+        side: ORDER_SIDE.SELL,
+        newClientOrderId: insuranceId + '_SL',
+        stopPrice: p_stop,
+        type: ORDER_TYPE.STOP_MARKET,
+        priceProtect: true,
+        positionSide: side,
+      };
+
+      tpData = {
+        symbol,
+        quantity,
+        side: ORDER_SIDE.SELL,
+        newClientOrderId: insuranceId + '_TP',
+        stopPrice: p_claim,
+        type: ORDER_TYPE.TAKE_PROFIT_MARKET,
+        priceProtect: true,
+        positionSide: side,
+      };
+    }
+
+    let [slPosition, tpPosition] = await Promise.all([
+      this.binanceService.placeFuturesOrder(slData, binanceAccount),
+      this.binanceService.placeFuturesOrder(tpData, binanceAccount),
+    ]);
+    const slError = !isSuccessResponse(slPosition);
+    const tpError = !isSuccessResponse(tpPosition);
+
+    //Retry đặt lệnh nếu SL hoặc TP bị lỗi
+    if (slError || tpError) {
+      await sleep(200);
+      if (slError) {
+        slPosition = await this.binanceService.placeFuturesOrder(
+          slData,
+          binanceAccount,
+        );
+      }
+
+      if (tpError) {
+        tpPosition = await this.binanceService.placeFuturesOrder(
+          tpData,
+          binanceAccount,
+        );
+      }
     }
 
     return { sl: slPosition, tp: tpPosition };
