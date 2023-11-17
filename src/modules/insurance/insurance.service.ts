@@ -96,7 +96,6 @@ export class InsuranceService {
     @InjectModel(OnchainHistory.name)
     private readonly onchainHistoryModel: Model<OnchainHistory>,
 
-    private readonly insuranceCache: InsuranceCache,
     private readonly cacheService: CacheService,
     private readonly lockService: LockService,
     private readonly priceService: PriceService,
@@ -273,7 +272,7 @@ export class InsuranceService {
         }),
       );
 
-      await this.insuranceCache.setOneActiveInsurance(newInsurance);
+      // await this.insuranceCache.setOneActiveInsurance(newInsurance);
 
       await newInsurance.save();
 
@@ -830,7 +829,7 @@ export class InsuranceService {
             }),
           );
 
-          await this.insuranceCache.delActiveInsurances([_id]);
+          // await this.insuranceCache.delActiveInsurances([_id]);
 
           // TODO cancel binance order
 

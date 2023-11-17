@@ -15,7 +15,6 @@ import {
   INSURANCE_ACTION,
   INSURANCE_QUEUE_ACTION,
 } from '@modules/insurance/constants';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -31,13 +30,19 @@ export class InsuranceJob {
   ) {
     this.priceService.subscribeHighLowInterval(
       'insurance',
-      SECONDS_TO_MILLISECONDS.FIVE,
+      SECONDS_TO_MILLISECONDS.TEN,
       (data: HighLowIntervalPrice) => this.handleInsurances(data),
     );
   }
 
   private async handleInsurances(priceData: HighLowIntervalPrice) {
-    const insurances = await this.insuranceCache.getActiveInsurances();
+    // const insurances = await this.insuranceCache.getActiveInsurances();
+    const insurances = await this.insuranceModel
+      .find({
+        state: INSURANCE_STATE.AVAILABLE,
+      })
+      .read('s')
+      .lean();
     await Bluebird.map(
       insurances,
       async (insurance) => {
@@ -81,7 +86,7 @@ export class InsuranceJob {
 
     // hit TP
     if (Big(currentPrice).gte(insurance.p_claim)) {
-      await this.insuranceCache.delActiveInsurances([insurance._id]);
+      // await this.insuranceCache.delActiveInsurances([insurance._id]);
       this.insuranceService.insuranceQueue.add(
         INSURANCE_QUEUE_ACTION.HIT_SLTP,
         {
@@ -94,7 +99,7 @@ export class InsuranceJob {
 
     // hit SL
     if (Big(currentPrice).lte(insurance.p_stop)) {
-      await this.insuranceCache.delActiveInsurances([insurance._id]);
+      // await this.insuranceCache.delActiveInsurances([insurance._id]);
       this.insuranceService.insuranceQueue.add(
         INSURANCE_QUEUE_ACTION.HIT_SLTP,
         {
@@ -117,7 +122,7 @@ export class InsuranceJob {
 
     // hit TP
     if (Big(currentPrice).lte(insurance.p_claim)) {
-      await this.insuranceCache.delActiveInsurances([insurance._id]);
+      // await this.insuranceCache.delActiveInsurances([insurance._id]);
       this.insuranceService.insuranceQueue.add(
         INSURANCE_QUEUE_ACTION.HIT_SLTP,
         {
@@ -130,7 +135,7 @@ export class InsuranceJob {
 
     // hit SL
     if (Big(currentPrice).gte(insurance.p_stop)) {
-      await this.insuranceCache.delActiveInsurances([insurance._id]);
+      // await this.insuranceCache.delActiveInsurances([insurance._id]);
       this.insuranceService.insuranceQueue.add(
         INSURANCE_QUEUE_ACTION.HIT_SLTP,
         {
@@ -147,7 +152,7 @@ export class InsuranceJob {
    * each insurance is inserted individually
    * running sltp job can still be processed without fully sync needed
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  // @Cron(CronExpression.EVERY_5_MINUTES)
   async syncInsuranceToRedis() {
     console.log('syncInsuranceToRedis', new Date());
     const insurances = await this.insuranceModel

@@ -106,7 +106,7 @@ export class BinanceService {
         method,
         path,
         params,
-        error: error?.response?.data,
+        error: error?.response ?? error,
       });
       this.namiSlack.slack.postMessage({
         text: 'BINANCE REQUEST ERROR',
@@ -153,7 +153,7 @@ export class BinanceService {
             text: {
               type: 'mrkdwn',
               text: `\`\`\`${JSON.stringify(
-                error?.response?.data,
+                error?.response ?? error,
                 null,
                 2,
               )}\`\`\``,

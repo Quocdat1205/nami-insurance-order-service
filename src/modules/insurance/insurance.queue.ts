@@ -14,7 +14,6 @@ import {
   INSURANCE_STATE,
   Insurance,
 } from '@modules/insurance/schemas/insurance.schema';
-import { BinanceService } from '@modules/binance/binance.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import Big from 'big.js';
@@ -38,7 +37,6 @@ export class InsuranceQueue {
     @InjectModel(Insurance.name)
     private readonly insuranceModel: Model<Insurance>,
 
-    private readonly binanceService: BinanceService,
     private readonly insuranceService: InsuranceService,
     private readonly walletService: WalletService,
   ) {}
