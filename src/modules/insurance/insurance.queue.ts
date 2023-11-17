@@ -89,13 +89,11 @@ export class InsuranceQueue {
                 .times(Big(insurance.p_market).minus(insurance.p_close).abs())
                 .toFixed(DEFAULT_DECIMAL),
             );
-            pnlProject = Number(
-              Big(pnlBinance).minus(pnlUser).toFixed(DEFAULT_DECIMAL),
-            );
-          } else {
-            pnlProject = -pnlUser;
           }
 
+          pnlProject = Number(
+            Big(pnlBinance).minus(pnlUser).toFixed(DEFAULT_DECIMAL),
+          );
           insurance.state = INSURANCE_STATE.CLAIMED;
           insurance.pnl = pnlUser;
           insurance.pnl_binance = pnlBinance;
@@ -126,12 +124,10 @@ export class InsuranceQueue {
                 .times(Big(insurance.p_market).minus(insurance.p_close).abs())
                 .toFixed(DEFAULT_DECIMAL),
             );
-            pnlProject = Number(
-              Big(pnlBinance).minus(pnlUser).toFixed(DEFAULT_DECIMAL),
-            );
-          } else {
-            pnlProject = -pnlUser;
           }
+          pnlProject = Number(
+            Big(pnlBinance).minus(pnlUser).toFixed(DEFAULT_DECIMAL),
+          );
 
           insurance.state = INSURANCE_STATE.LIQUIDATED;
           insurance.type_state = INSURANCE_STATE.LIQUIDATED;
