@@ -77,6 +77,12 @@ export class InsuranceQueue {
       let orderLog;
       switch (type) {
         case INSURANCE_ACTION.TP: {
+          const pnlUser = Number(
+            Big(insurance.q_claim)
+              .minus(insurance.margin)
+              .toFixed(DEFAULT_DECIMAL),
+          );
+
           if (insurance?.binance?.position?.origQty) {
             pnlBinance = Number(
               Big(insurance?.binance?.position?.origQty)
@@ -84,22 +90,14 @@ export class InsuranceQueue {
                 .toFixed(DEFAULT_DECIMAL),
             );
             pnlProject = Number(
-              Big(pnlBinance)
-                .minus(insurance.q_claim)
-                .plus(insurance.margin)
-                .toFixed(DEFAULT_DECIMAL),
+              Big(pnlBinance).minus(pnlUser).toFixed(DEFAULT_DECIMAL),
             );
           } else {
-            // pnlProject = insurance.margin - insurance.q_claim;
-            pnlProject = Number(
-              Big(insurance.margin)
-                .minus(insurance.q_claim)
-                .toFixed(DEFAULT_DECIMAL),
-            );
+            pnlProject = -pnlUser;
           }
 
           insurance.state = INSURANCE_STATE.CLAIMED;
-          insurance.pnl = insurance.q_claim - insurance.margin;
+          insurance.pnl = pnlUser;
           insurance.pnl_binance = pnlBinance;
           insurance.pnl_project = pnlProject || 0;
           insurance.changed_time = currentTime.getTime();
@@ -120,22 +118,24 @@ export class InsuranceQueue {
         }
 
         case INSURANCE_ACTION.SL: {
+          const pnlUser = -insurance.margin;
+          
           if (insurance?.binance?.position?.origQty) {
-            pnlBinance = Number(
+            pnlBinance = -Number(
               Big(insurance?.binance?.position?.origQty)
                 .times(Big(insurance.p_market).minus(insurance.p_close).abs())
                 .toFixed(DEFAULT_DECIMAL),
             );
             pnlProject = Number(
-              Big(pnlBinance).minus(insurance.margin).toFixed(DEFAULT_DECIMAL),
+              Big(pnlBinance).minus(pnlUser).toFixed(DEFAULT_DECIMAL),
             );
           } else {
-            pnlProject = insurance.margin;
+            pnlProject = -pnlUser;
           }
 
           insurance.state = INSURANCE_STATE.LIQUIDATED;
           insurance.type_state = INSURANCE_STATE.LIQUIDATED;
-          insurance.pnl = -insurance.margin;
+          insurance.pnl = pnlUser;
           insurance.changed_time = currentTime.getTime();
           insurance.pnl_binance = pnlProject || 0;
           insurance.pnl_project = pnlBinance;
