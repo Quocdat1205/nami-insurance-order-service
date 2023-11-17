@@ -62,7 +62,6 @@ export class ExceptionHandlerInterceptor<T>
         catchError((errors) => {
           try {
             if (errors?.name?.includes('Exception')) {
-              console.error(errors);
               return throwError(() => errors);
             }
             const current = new Date();
