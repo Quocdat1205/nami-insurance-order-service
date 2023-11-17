@@ -46,6 +46,7 @@ export class BinanceService {
     if (fs.existsSync(bnbConfigPath)) {
       const file = fs.readFileSync(bnbConfigPath);
       const parsedFile = JSON.parse(file.toString());
+      console.info('LOAD BINANCE ACCOUNTS', parsedFile);
       for (const accountInfo of parsedFile) {
         this.binanceCredentials.push({
           id: accountInfo.id,
@@ -74,7 +75,7 @@ export class BinanceService {
     try {
       params = removeEmptyValue(params);
       this.logger.info('makeBinanceRequest', {
-        binanceId: credentials.id,
+        binanceId: credentials?.id,
         method,
         path,
         params,
@@ -102,12 +103,15 @@ export class BinanceService {
         },
       });
     } catch (error) {
-      this.logger.error('makeBinanceRequest ERROR', {
+      const _error = error?.response?.data ?? error?.data ?? error.message;
+      const log = {
         method,
         path,
         params,
-        error: error?.response ?? error,
-      });
+        binanceId: credentials?.id,
+        error: _error,
+      };
+      this.logger.error('makeBinanceRequest ERROR', log);
       this.namiSlack.slack.postMessage({
         text: 'BINANCE REQUEST ERROR',
         blocks: [
@@ -130,38 +134,12 @@ export class BinanceService {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `\`\`\`${JSON.stringify(
-                {
-                  method,
-                  path,
-                  params,
-                },
-                null,
-                2,
-              )}\`\`\``,
-            },
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `_Response_`,
-            },
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `\`\`\`${JSON.stringify(
-                error?.response ?? error,
-                null,
-                2,
-              )}\`\`\``,
+              text: `\`\`\`${JSON.stringify(log, null, 2)}\`\`\``,
             },
           },
         ],
       });
-      return error?.response?.data;
+      return error?.response;
     }
   }
 
@@ -169,13 +147,13 @@ export class BinanceService {
     payload: FuturesPlaceOrderRequestDTO,
     credentials?: IBinanceCredential,
   ) {
-    const { data } = await this.makeBinanceRequest({
+    const response = await this.makeBinanceRequest({
       method: HTTP_METHOD.POST,
       path: this.BINANCE_API_ENDPOINT.PLACE_ORDER,
       params: payload,
       credentials,
     });
-    return data;
+    return response?.data;
   }
 
   async cancelFuturesOrder(
@@ -186,12 +164,18 @@ export class BinanceService {
     },
     credentials?: IBinanceCredential,
   ) {
-    const { data } = await this.makeBinanceRequest({
+    const response = await this.makeBinanceRequest({
       method: HTTP_METHOD.DELETE,
       path: this.BINANCE_API_ENDPOINT.PLACE_ORDER,
       params: payload,
       credentials,
     });
-    return data;
+    return response?.data;
+  }
+
+  getBinanceCredential(binanceId: number) {
+    return this.binanceCredentials.find(
+      (o) => Number(o.id) === Number(binanceId),
+    );
   }
 }

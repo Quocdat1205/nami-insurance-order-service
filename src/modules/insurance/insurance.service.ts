@@ -140,13 +140,6 @@ export class InsuranceService {
       quote: unit,
     })?.lastPrice;
 
-    console.log(
-      this.priceService.price(symbol, {
-        base: asset_covered,
-        quote: unit,
-      }),
-    );
-
     const { isValid } = validateMargin(p_open, payload);
     if (!isValid) {
       throw new BadRequestException(EXCEPTION.INSURANCE.INVALID_MARGIN);
