@@ -295,12 +295,3 @@ export class InsuranceQueue {
     }
   }
 }
-
-
-console.log(
-  -Number(
-    Big("0.182")
-      .times(Big(36614).minus(36542.78998).abs())
-      .toFixed(DEFAULT_DECIMAL),
-  )
-)
