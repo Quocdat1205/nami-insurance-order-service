@@ -133,8 +133,8 @@ export class InsuranceQueue {
           insurance.type_state = INSURANCE_STATE.LIQUIDATED;
           insurance.pnl = pnlUser;
           insurance.changed_time = currentTime.getTime();
-          insurance.pnl_binance = pnlProject || 0;
-          insurance.pnl_project = pnlBinance;
+          insurance.pnl_binance = pnlBinance || 0;
+          insurance.pnl_project = pnlProject;
           insurance.payback = false;
 
           orderLog = {
