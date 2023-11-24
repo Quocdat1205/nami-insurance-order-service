@@ -9,7 +9,7 @@ mongoose.set('debug', true);
 @Module({
   imports: [
     MongooseModule.forRoot(config.MONGO.URI, {
-      readPreference: ReadPreference.SECONDARY,
+      readPreference: ReadPreference.PRIMARY,
     }),
   ],
 })
