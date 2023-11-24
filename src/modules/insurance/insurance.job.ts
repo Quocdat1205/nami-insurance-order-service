@@ -41,7 +41,7 @@ export class InsuranceJob {
       .find({
         state: INSURANCE_STATE.AVAILABLE,
       })
-      .read('s')
+      .read('primary')
       .lean();
     await Bluebird.map(
       insurances,
