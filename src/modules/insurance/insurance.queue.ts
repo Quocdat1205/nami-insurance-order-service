@@ -261,7 +261,7 @@ export class InsuranceQueue {
         this.logger.error('HIT TP INSURANCE TRANSFER WALLET ERROR', {
           userId: insurance.owner,
           payload,
-          error: new Error(error),
+          error: JSON.stringify(error),
           transactionHistories,
         });
         if (transactionHistories && transactionHistories?.length) {
@@ -280,15 +280,16 @@ export class InsuranceQueue {
         futuresOrderId: insurance.futures_order_id,
       });
     } catch (error) {
+      const _error = JSON.stringify(error)
       this.namiSlack.sendSlackMessage('HIT TP INSURANCE ERROR', {
         userId: insurance.owner,
         payload,
-        error,
+        error: _error,
       });
       this.logger.error('HIT TP INSURANCE ERROR', {
         userId: insurance.owner,
         payload,
-        error,
+        error: _error,
       });
       console.error('ERROR TP JOB', error);
     }
