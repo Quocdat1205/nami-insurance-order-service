@@ -148,6 +148,7 @@ export class InsuranceJob {
   }
 
   /**
+   * @deprecated no need to use redis cache
    * @note
    * each insurance is inserted individually
    * running sltp job can still be processed without fully sync needed
