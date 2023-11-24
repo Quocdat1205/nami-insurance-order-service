@@ -117,7 +117,7 @@ export class InsuranceQueue {
 
         case INSURANCE_ACTION.SL: {
           const pnlUser = -insurance.margin;
-          
+
           if (insurance?.binance?.position?.origQty) {
             pnlBinance = -Number(
               Big(insurance?.binance?.position?.origQty)
@@ -161,6 +161,8 @@ export class InsuranceQueue {
           break;
         }
       }
+
+      await insurance.save();
 
       const transactionHistories = [];
       try {
@@ -269,11 +271,8 @@ export class InsuranceQueue {
         }
       }
 
-      await insurance.save();
-
-      this.insuranceService.createInsuranceCommission(insurance.toObject());
-
       // emit event to user and exchange
+      this.insuranceService.createInsuranceCommission(insurance.toObject());
       this.insuranceService.emitUpdateInsuranceToUser(insurance.toObject());
       this.insuranceService.emitUpdateInsuranceToNami({
         symbol: insurance.asset_covered,
