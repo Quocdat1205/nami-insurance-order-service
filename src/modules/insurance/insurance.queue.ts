@@ -249,19 +249,20 @@ export class InsuranceQueue {
           to: true,
         });
       } catch (error) {
+        const _error = JSON.stringify(error);
         this.namiSlack.sendSlackMessage(
           'HIT TP INSURANCE TRANSFER WALLET ERROR',
           {
             userId: insurance.owner,
             payload,
-            error,
+            error: _error,
             transactionHistories,
           },
         );
         this.logger.error('HIT TP INSURANCE TRANSFER WALLET ERROR', {
           userId: insurance.owner,
           payload,
-          error: JSON.stringify(error),
+          error: _error,
           transactionHistories,
         });
         if (transactionHistories && transactionHistories?.length) {
