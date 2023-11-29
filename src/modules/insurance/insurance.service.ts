@@ -73,11 +73,14 @@ import config from '@configs/configuration';
 import { SocketService } from '@modules/socket/socket.service';
 import { FuturesPlaceOrderRequestDTO } from '@modules/binance/dtos/futures.dto';
 import { sleep } from '@commons/utils';
+import { Redis } from 'ioredis';
+import { REDIS_PROVIDER } from '@databases/redis/redis.providers';
 
 @Injectable()
 export class InsuranceService {
   public readonly insuranceQueue: Queue;
   public readonly binanceQueue: Queue;
+  private readonly redisCache: Redis;
 
   private readonly INSURANCE_ID = 'insurance:id';
   private readonly INSURANCE_LOCK_SIGNATURE = (id: string) =>
@@ -110,9 +113,11 @@ export class InsuranceService {
 
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly namiSlack: NamiSlack,
+    @Inject(REDIS_PROVIDER.CACHE) private readonly redis: Redis,
   ) {
     this.insuranceQueue = this._insuranceQueue;
     this.binanceQueue = this._binanceQueue;
+    this.redisCache = this.redis ?? new Redis(config.REDIS.CACHE.URI);
   }
 
   /**
@@ -355,6 +360,17 @@ export class InsuranceService {
         insurance,
         error,
       });
+    }
+  }
+
+  async pushSlack(insurance_id) {
+    try {
+      this.redisCache.publish(
+        config.SLACK.CHANNELS.REDIS_PUBSUB,
+        JSON.stringify({ id: insurance_id }),
+      );
+    } catch (error) {
+      console.error('ERROR PUSH SLACK', error);
     }
   }
 }

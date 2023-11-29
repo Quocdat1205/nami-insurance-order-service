@@ -280,8 +280,10 @@ export class InsuranceQueue {
         namiUserId: insurance.owner,
         futuresOrderId: insurance.futures_order_id,
       });
+
+      this.insuranceService.pushSlack(insurance._id);
     } catch (error) {
-      const _error = JSON.stringify(error)
+      const _error = JSON.stringify(error);
       this.namiSlack.sendSlackMessage('HIT TP INSURANCE ERROR', {
         userId: insurance.owner,
         payload,

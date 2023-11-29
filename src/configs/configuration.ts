@@ -79,6 +79,7 @@ const config = {
     CHANNELS: {
       ALERT: 'C05TAP544R5',
       ALERT_DEV: 'C05TR3Q5TGE',
+      REDIS_PUBSUB: process.env.REDIS_SLACK_CHANNEL,
     },
   },
 
