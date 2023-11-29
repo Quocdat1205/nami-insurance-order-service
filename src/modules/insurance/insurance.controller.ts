@@ -9,6 +9,7 @@ export class InsuranceController {
   @Get('publish')
   async publishToChannel(@Query() query: any) {
     const id = query?.id;
+    console.log('publishToChannel', query, id);
     if (id) {
       const publish = await this.insuranceService.pushSlack(id);
     }

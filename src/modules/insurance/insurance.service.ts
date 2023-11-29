@@ -364,9 +364,13 @@ export class InsuranceService {
   }
 
   async pushSlack(insurance_id) {
-    this.redisCache.publish(
-      config.SLACK.CHANNELS.REDIS_PUBSUB,
-      JSON.stringify({ id: insurance_id }),
-    );
+    try {
+      this.redisCache.publish(
+        config.SLACK.CHANNELS.REDIS_PUBSUB,
+        JSON.stringify({ id: insurance_id }),
+      );
+    } catch (error) {
+      console.error('ERROR PUSH SLACK', error);
+    }
   }
 }
