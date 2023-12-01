@@ -120,8 +120,13 @@ export class BinanceQueue {
         }
         const isErrPosition = position && position?.code && position?.code < 0;
         if (isErrPosition) {
-          throw {
+          console.error('CANCEL POSITION ERROR', {
             message: 'Cancel position error',
+            insurance,
+            response: position,
+          });
+          throw {
+            message: 'Cancel POSITIOM error',
             insurance,
             response: position,
           };

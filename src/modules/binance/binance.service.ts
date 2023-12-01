@@ -147,13 +147,19 @@ export class BinanceService {
     payload: FuturesPlaceOrderRequestDTO,
     credentials?: IBinanceCredential,
   ) {
-    const response = await this.makeBinanceRequest({
-      method: HTTP_METHOD.POST,
-      path: this.BINANCE_API_ENDPOINT.PLACE_ORDER,
-      params: payload,
-      credentials,
-    });
-    return response?.data;
+    try {
+      console.log('PLACE ORDER', payload);
+
+      const response = await this.makeBinanceRequest({
+        method: HTTP_METHOD.POST,
+        path: this.BINANCE_API_ENDPOINT.PLACE_ORDER,
+        params: payload,
+        credentials,
+      });
+      return response?.data;
+    } catch (error) {
+      console.error('ERROR PLACE ORDER', error);
+    }
   }
 
   async cancelFuturesOrder(
