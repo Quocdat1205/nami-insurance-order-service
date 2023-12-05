@@ -51,5 +51,6 @@ import { SocketModule } from '@modules/socket/socket.module';
   ],
   controllers: [InsuranceController],
   providers: [InsuranceCache, InsuranceService, InsuranceQueue, InsuranceJob],
+  exports: [InsuranceService],
 })
 export class InsuranceModule {}

@@ -1,15 +1,8 @@
-import { OnchainHistory } from '@modules/insurance/schemas/onchain-history.schema';
 import {
   BINANCE_QUEUE_ACTION,
   BINANCE_QUEUE_NAME,
-  ORDER_SIDE,
-  ORDER_TYPE,
-  POSITION_SIDE,
 } from '@modules/binance/constants';
-import {
-  INSURANCE_QUEUE_NAME,
-  TRANSFER_HISTORY,
-} from '@modules/insurance/constants';
+import { INSURANCE_QUEUE_NAME } from '@modules/insurance/constants';
 import {
   BadRequestException,
   ConflictException,
@@ -19,60 +12,33 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import {
   INSURANCE_STATE,
-  INSURANCE_TYPE,
-  PERIOD_TYPE,
   Insurance,
   INSURANCE_SIDE,
 } from '@modules/insurance/schemas/insurance.schema';
-import { CacheService } from '@commons/modules/cache/cache.service';
 import { Model } from 'mongoose';
 import { LockService } from '@commons/modules/lock/lock.service';
 import { EXCEPTION, Exception } from '@commons/constants/exception';
-import { BuyInsuranceRequestDTO } from '@modules/insurance/dtos/buy-insurance-request.dto';
 import { User } from '@commons/modules/auth/decorators/user.decorator';
 import { PriceService } from '@modules/price/price.service';
-import {
-  BINANCE_ORDER_MARGIN,
-  CLAIM_MIN_RATIO,
-  DEFAULT_DECIMAL,
-  DEFAULT_TOKEN_UNIT,
-  FILTER_TYPE,
-  NOTE_TITLES,
-} from '@modules/insurance/constants';
+import { NOTE_TITLES } from '@modules/insurance/constants';
 import { WalletService } from '@modules/wallet/wallet.service';
 import { CURRENCIES } from '@commons/constants/currencies';
 import {
   HistoryType,
   TRANSACTION_CATEGORY_GROUP,
 } from '@commons/constants/transaction-category';
-import { MINUTES_TO_MILLISECONDS, WALLET_TYPES } from '@commons/constants';
+import { WALLET_TYPES } from '@commons/constants';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
-import {
-  calculateFuturesBnbQuantity,
-  calculateInsuranceStat,
-  calculatePRefund,
-  symbolFilter,
-  validateMargin,
-} from '@modules/insurance/utils';
+import { calculatePRefund } from '@modules/insurance/utils';
 import Big from 'big.js';
-import { AssetConfig } from '@modules/insurance/schemas/asset-config.schema';
-import { PeriodConfig } from '@modules/insurance/schemas/period-config.schema';
-import { InsuranceLog } from '@modules/insurance/schemas/insurance-log.schema';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import {
-  BinanceService,
-  IBinanceCredential,
-} from '@modules/binance/binance.service';
-import { isSuccessResponse } from '@modules/binance/utils';
 import omit from 'lodash/omit';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import config from '@configs/configuration';
 import { SocketService } from '@modules/socket/socket.service';
-import { FuturesPlaceOrderRequestDTO } from '@modules/binance/dtos/futures.dto';
-import { sleep } from '@commons/utils';
 import { Redis } from 'ioredis';
 import { REDIS_PROVIDER } from '@databases/redis/redis.providers';
 
@@ -89,20 +55,10 @@ export class InsuranceService {
   constructor(
     @InjectModel(Insurance.name)
     private readonly insuranceModel: Model<Insurance>,
-    @InjectModel(AssetConfig.name)
-    private readonly assetConfigModel: Model<AssetConfig>,
-    @InjectModel(PeriodConfig.name)
-    private readonly configPeriodModel: Model<PeriodConfig>,
-    @InjectModel(InsuranceLog.name)
-    private readonly insuranceLogModel: Model<InsuranceLog>,
-    @InjectModel(OnchainHistory.name)
-    private readonly onchainHistoryModel: Model<OnchainHistory>,
 
-    private readonly cacheService: CacheService,
     private readonly lockService: LockService,
     private readonly priceService: PriceService,
     private readonly walletService: WalletService,
-    private readonly binanceService: BinanceService,
     private readonly esService: ElasticsearchService,
     private readonly socketService: SocketService,
 
