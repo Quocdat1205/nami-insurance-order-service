@@ -74,7 +74,6 @@ export class InsuranceQueue {
 
     try {
       this.insuranceService.cancelBinanceFuturesOrder(insurance);
-      let orderLog;
       switch (type) {
         case INSURANCE_ACTION.TP: {
           const pnlUser = Number(
@@ -101,17 +100,6 @@ export class InsuranceQueue {
           insurance.changed_time = currentTime.getTime();
           insurance.payback = false;
 
-          orderLog = {
-            insuranceId: insurance._id,
-            message: 'Hit TP',
-            metadata: [
-              {
-                field: 'state',
-                from: _insurance.state ?? null,
-                to: insurance.state,
-              },
-            ],
-          };
           break;
         }
 
@@ -136,23 +124,6 @@ export class InsuranceQueue {
           insurance.pnl_binance = pnlBinance || 0;
           insurance.pnl_project = pnlProject;
           insurance.payback = false;
-
-          orderLog = {
-            insuranceId: insurance._id,
-            message: 'Hit SL',
-            metadata: [
-              {
-                field: 'state',
-                from: insurance.state ?? null,
-                to: insurance.state,
-              },
-              {
-                field: 'type_state',
-                from: insurance.type_state ?? null,
-                to: insurance.type_state,
-              },
-            ],
-          };
 
           break;
         }
@@ -242,12 +213,6 @@ export class InsuranceQueue {
         );
 
         insurance.payback = true;
-
-        orderLog.metadata.push({
-          field: 'payback',
-          from: _insurance.payback ?? null,
-          to: true,
-        });
       } catch (error) {
         const _error = JSON.stringify(error);
         this.namiSlack.sendSlackMessage(
