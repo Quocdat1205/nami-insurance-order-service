@@ -85,7 +85,7 @@ export class InsuranceQueue {
           if (insurance?.binance?.position?.origQty) {
             pnlBinance = Number(
               Big(insurance?.binance?.position?.origQty)
-                .times(Big(insurance.p_market).minus(insurance.p_close).abs())
+                .times(Big(insurance.p_market).minus((insurance.p_close ? insurance.p_close : insurance.p_claim)).abs())
                 .toFixed(DEFAULT_DECIMAL),
             );
           }
@@ -109,7 +109,7 @@ export class InsuranceQueue {
           if (insurance?.binance?.position?.origQty) {
             pnlBinance = -Number(
               Big(insurance?.binance?.position?.origQty)
-                .times(Big(insurance.p_market).minus(insurance.p_close).abs())
+                .times(Big(insurance.p_market).minus((insurance.p_close ? insurance.p_close : insurance.p_stop)).abs())
                 .toFixed(DEFAULT_DECIMAL),
             );
           }
