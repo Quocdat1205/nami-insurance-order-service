@@ -1,6 +1,7 @@
 import { ASSETS, CURRENCIES } from '@commons/constants/currencies';
 import { Exception } from '@commons/constants/exception';
 import { BadRequestException } from '@nestjs/common';
+import { WebSocket } from 'ws';
 
 export type Ticker = {
   symbol: string;
@@ -132,4 +133,10 @@ export class MarketPrice {
     this.hh = Number(payload.hh);
     this.lh = Number(payload.lh);
   }
+}
+
+export interface WsConnection {
+  ws: WebSocket;
+  closeInitiated: boolean;
+  lastUpdated: number;
 }
