@@ -1,6 +1,6 @@
 import { ReadPreference } from 'mongodb';
 import { ASSETS, CURRENCIES } from '@commons/constants/currencies';
-import { BadRequestException, Injectable, Scope } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Scope } from '@nestjs/common';
 import Big from 'big.js';
 import {
   BookTicker,
@@ -9,6 +9,7 @@ import {
   ISymbolTickerStreamPayload,
   SymbolTicker,
   Ticker,
+  WsConnection,
 } from '@modules/price/types';
 import { WebSocket } from 'ws';
 import { Exception } from '@commons/constants/exception';
@@ -16,15 +17,21 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import config from '@configs/configuration';
 import { NamiSlack } from '@commons/modules/logger/platforms/slack.module';
-import { SECONDS_TO_MILLISECONDS } from '@commons/constants';
+import {
+  MINUTES_TO_MILLISECONDS,
+  SECONDS_TO_MILLISECONDS,
+} from '@commons/constants';
+import { Interval } from '@nestjs/schedule';
 
 @Injectable({
   scope: Scope.DEFAULT,
 })
 export class PriceService {
+  private readonly logger = new Logger(PriceService.name);
   private readonly BINANCE_FUTURES_STREAMS_URL = 'wss://fstream.binance.com';
   private readonly PRICE_SPREAD_RATIO = config.PRICE_SPREAD_RATIO;
   private readonly PRICE_DECIMAL = 8;
+  private readonly wsConnections = new Map<string, WsConnection>();
   /**
    * @Public
    * @description USDT/VNDC Market Rate (updated each 10 minutes)
@@ -98,30 +105,46 @@ export class PriceService {
       this.namiSlack.sendSlackMessage(`Failed to stream ${symbol} ticker`);
       return;
     }
-    const binancePriceStream = new WebSocket(
+    const ws = new WebSocket(
       `${this.BINANCE_FUTURES_STREAMS_URL}/ws/${symbol?.toLowerCase()}@ticker`,
       {
         timeout: SECONDS_TO_MILLISECONDS.TEN,
       },
     );
-    // binancePriceStream.on('open', () => {});
-    binancePriceStream.on('error', () => {
+    ws.on('ping', () => {
+      ws.pong();
+      const connection = this.wsConnections.get(symbol);
+      if (connection) connection.lastUpdated = Date.now();
+    });
+
+    ws.on('error', () => {
       console.error(`${symbol} ticker stream error`);
     });
-    binancePriceStream.on('close', () => {
-      console.error(
-        `${symbol} ticker stream close`,
-        `Retried to stream ${symbol}: ${retry}`,
-      );
-      this.bookTickers[symbol] = null;
-      setTimeout(
-        () => this.startSymbolTickerStream(symbol, retry + 1),
-        SECONDS_TO_MILLISECONDS.FIVE,
-      );
+
+    ws.on('close', () => {
+      const wsConnection = this.wsConnections.get(symbol);
+      if (!wsConnection?.closeInitiated) {
+        console.error(
+          `${symbol} ticker stream close`,
+          `Retried to stream ${symbol}: ${retry}`,
+        );
+        this.bookTickers[symbol] = null;
+        setTimeout(
+          () => this.startSymbolTickerStream(symbol, retry + 1),
+          SECONDS_TO_MILLISECONDS.FIVE,
+        );
+      } else if (wsConnection) {
+        wsConnection.closeInitiated = false;
+      }
     });
-    binancePriceStream.on('message', (payload: Buffer) =>
-      this.processPriceStream(payload),
-    );
+
+    ws.on('message', (payload: Buffer) => this.processPriceStream(payload));
+
+    this.wsConnections.set(symbol, {
+      ws,
+      closeInitiated: false,
+      lastUpdated: Date.now(),
+    });
   }
 
   private processPriceStream(_payload: Buffer) {
@@ -137,6 +160,8 @@ export class PriceService {
         price: 1,
       };
       this.updateBookTicker(data, usdtConvertRate);
+      const wsConnection = this.wsConnections.get(payload.s);
+      if (wsConnection) wsConnection.lastUpdated = Date.now();
     } catch (error) {
       console.error(error);
       this.namiSlack.sendSlackMessage(
@@ -367,5 +392,23 @@ export class PriceService {
       ),
       lastTick: basePrice.lastTick,
     };
+  }
+
+  @Interval(SECONDS_TO_MILLISECONDS.TEN)
+  checkAliveWsConnections() {
+    this.wsConnections.forEach((wsConnection, symbol) => {
+      if (
+        Math.abs(Date.now() - wsConnection.lastUpdated) >
+        MINUTES_TO_MILLISECONDS.THREE
+      ) {
+        this.logger.warn(
+          `Symbol ${symbol} ticker stream not updated in 3 minutes, restarting...`,
+        );
+        wsConnection.closeInitiated = true;
+        wsConnection.ws.close();
+        wsConnection.ws.terminate();
+        this.startSymbolTickerStream(symbol);
+      }
+    });
   }
 }
