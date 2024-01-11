@@ -78,8 +78,10 @@ export class InsuranceJob {
       async (insurance) => {
         const currentTime = new Date();
         const symbol = `${insurance.asset_covered}${insurance.unit}`;
+        const startTime = insurance.createdAt || 0;
+        const endTime = insurance.expired || currentTime.getTime();
         const listPrices = prices.get(symbol).reduce((list, p) => {
-          if (p.t >= insurance.createdAt && p.t <= insurance.expired) {
+          if (p.t >= startTime && p.t <= endTime) {
             list.push(p.p);
           }
           return list;
