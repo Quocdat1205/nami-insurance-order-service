@@ -19,7 +19,7 @@ import { Model } from 'mongoose';
 import { LockService } from '@commons/modules/lock/lock.service';
 import { EXCEPTION, Exception } from '@commons/constants/exception';
 import { User } from '@commons/modules/auth/decorators/user.decorator';
-import { PriceService } from '@modules/price/price.service';
+import { PriceV2Service } from '@modules/price/price-v2.service';
 import { NOTE_TITLES } from '@modules/insurance/constants';
 import { WalletService } from '@modules/wallet/wallet.service';
 import { CURRENCIES } from '@commons/constants/currencies';
@@ -57,7 +57,7 @@ export class InsuranceService {
     private readonly insuranceModel: Model<Insurance>,
 
     private readonly lockService: LockService,
-    private readonly priceService: PriceService,
+    private readonly priceService: PriceV2Service,
     private readonly walletService: WalletService,
     private readonly esService: ElasticsearchService,
     private readonly socketService: SocketService,
