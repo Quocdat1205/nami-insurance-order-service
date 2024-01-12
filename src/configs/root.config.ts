@@ -14,6 +14,7 @@ import { DevtoolsModule } from '@nestjs/devtools-integration';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SECONDS_TO_MILLISECONDS } from '@commons/constants';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 const BaseModules = [
   ConfigModule.forRoot({
@@ -41,6 +42,7 @@ const BaseModules = [
       limit: config.NICE,
     },
   ]),
+  EventEmitterModule.forRoot(),
   ScheduleModule.forRoot(),
 ];
 
