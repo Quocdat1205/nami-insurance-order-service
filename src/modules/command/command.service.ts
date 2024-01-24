@@ -2,6 +2,7 @@ import { Command, Option } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
+  INSURANCE_SIDE,
   INSURANCE_STATE,
   Insurance,
 } from '@modules/insurance/schemas/insurance.schema';
@@ -92,5 +93,47 @@ export class CommandInsuranceService {
     }
 
     return;
+  }
+
+  @Command({
+    command: 'insurance:recalculate-expired-pnl',
+    describe: 'Recalculate expired insurance PnL',
+  })
+  async recalculateExpiredInsurancePnL(): Promise<void> {
+    const insurances = await this.insuranceModel.find({
+      state: INSURANCE_STATE.LIQUIDATED,
+      is_transfer_binance: 1,
+      type_state: INSURANCE_STATE.EXPIRED,
+      p_close: {
+        $gt: 0,
+      },
+    });
+    for (const insurance of insurances) {
+      const { p_close, p_market, pnl } = insurance;
+      let pnl_binance = 0;
+      if (insurance?.binance?.position?.origQty) {
+        const quantity = Number(insurance?.binance?.position?.origQty);
+        if (
+          (insurance.side === INSURANCE_SIDE.BEAR && p_close < p_market) ||
+          (insurance.side === INSURANCE_SIDE.BULL && p_close > p_market)
+        ) {
+          // Lãi
+          pnl_binance = quantity * Math.abs(p_market - p_close);
+        } else {
+          // Lỗ
+          pnl_binance = -quantity * Math.abs(p_market - p_close);
+        }
+      }
+      const pnl_project = pnl_binance - pnl;
+      await this.insuranceModel.updateOne(
+        { _id: insurance._id },
+        {
+          pnl_project,
+          pnl_binance,
+        },
+      );
+      console.log('UPDATED PNL INSURANCE', insurance._id);
+    }
+    console.log('DONE');
   }
 }

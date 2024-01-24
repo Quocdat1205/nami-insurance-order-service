@@ -198,6 +198,13 @@ export class Insurance {
 
   @Prop()
   createdAt: number;
+
+  @Prop({
+    required: false,
+    type: Number,
+    default: 0,
+  })
+  is_transfer_binance: number;
 }
 
 export const InsuranceSchema = SchemaFactory.createForClass(Insurance);
