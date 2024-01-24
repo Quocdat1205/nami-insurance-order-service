@@ -123,6 +123,8 @@ export class CommandInsuranceService {
           // Lỗ
           pnl_binance = -quantity * Math.abs(p_market - p_close);
         }
+      } else {
+        continue;
       }
       const pnl_project = pnl_binance - pnl;
       await this.insuranceModel.updateOne(
@@ -132,6 +134,7 @@ export class CommandInsuranceService {
           pnl_binance,
         },
       );
+      console.log("pnl_binance", pnl_binance)
       console.log('UPDATED PNL INSURANCE', insurance._id);
     }
     console.log('DONE');
